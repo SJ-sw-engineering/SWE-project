@@ -1,14 +1,12 @@
 CREATE DATABASE IF NOT EXISTS recruitment_db;
 USE recruitment_db;
 
--- 외래키 종속성을 고려하여 자식 테이블부터 삭제
 DROP TABLE IF EXISTS AttendanceRecords, AttendanceSessions, ApprovedMembers, Devices, Applications, Posts, Users;
 
--- 1. Users 테이블 (username을 PRIMARY KEY로 변경)
 CREATE TABLE IF NOT EXISTS Users (
-    username VARCHAR(20) PRIMARY KEY COMMENT '학번 (로그인 ID)',
-    password VARCHAR(255) NOT NULL COMMENT '비밀번호 (생년월일 8자리)',
-    name VARCHAR(50) NOT NULL COMMENT '사용자 이름',
+    username VARCHAR(20) PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -84,21 +82,19 @@ INSERT INTO Users (username, password, name) VALUES
 ('20241069', '20050922', '학생69'),
 ('20241070', '20051030', '학생70');
 
--- 2. Posts 테이블 (author_id를 VARCHAR(20)으로 변경)
 CREATE TABLE IF NOT EXISTS Posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    author_id VARCHAR(20) NOT NULL COMMENT '작성자 학번 (Users 테이블 참조)',
-    title VARCHAR(255) NOT NULL COMMENT '모집글 제목',
-    content TEXT NOT NULL COMMENT '모집글 내용',
-    category VARCHAR(100) NOT NULL COMMENT '카테고리 및 모집 분야',
-    target_size INT NOT NULL COMMENT '목표 모집 인원',
-    current_size INT DEFAULT 1 COMMENT '현재 모집된 인원 (작성자 포함 기본 1명)',
-    status ENUM('RECRUITING', 'CLOSED') DEFAULT 'RECRUITING' COMMENT '모집 상태',
+    author_id VARCHAR(20) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    target_size INT NOT NULL,
+    current_size INT DEFAULT 1,
+    status ENUM('RECRUITING', 'CLOSED') DEFAULT 'RECRUITING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES Users(username) ON DELETE CASCADE
 );
 
--- author_id를 기존 숫자 ID에 해당하는 학번으로 수정
 INSERT INTO Posts (author_id, title, content, category, target_size, current_size, status) VALUES
 ('20191001', '웹 프론트엔드 프로젝트 팀원 구합니다', '리액트를 활용한 교내 프로젝트 같이 하실 분 구합니다.', 'Web/Frontend', 4, 1, 'RECRUITING'),
 ('20191005', '파이썬 데이터 분석 스터디원 모집', '기초부터 함께 공부할 데이터 분석 스터디입니다.', 'Data/AI', 5, 2, 'RECRUITING'),
@@ -106,19 +102,17 @@ INSERT INTO Posts (author_id, title, content, category, target_size, current_siz
 ('20211020', '알고리즘 코딩테스트 스터디 (C++)', '매주 백준 골드 문제 3개씩 푸는 스터디입니다.', 'Study/Algorithm', 4, 1, 'RECRUITING'),
 ('20221035', '게임 잼 참가할 유니티 개발자 찾습니다', '이번 주말 해커톤 같이 참가하실 분!', 'Game/Unity', 2, 1, 'RECRUITING');
 
--- 3. Applications 테이블 (applicant_id를 VARCHAR(20)으로 변경)
 CREATE TABLE IF NOT EXISTS Applications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL COMMENT '지원하려는 모집글 ID (Posts 테이블 참조)',
-    applicant_id VARCHAR(20) NOT NULL COMMENT '지원자 학번 (Users 테이블 참조)',
-    message TEXT NOT NULL COMMENT '지원 동기 또는 메시지',
-    status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING' COMMENT '지원 상태',
+    post_id INT NOT NULL,
+    applicant_id VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
     FOREIGN KEY (applicant_id) REFERENCES Users(username) ON DELETE CASCADE
 );
 
--- applicant_id를 기존 숫자 ID에 해당하는 학번으로 수정
 INSERT INTO Applications (post_id, applicant_id, message, status) VALUES
 (1, '20191002', '리액트 프론트엔드 개발 경험이 있습니다. 열심히 참여하겠습니다!', 'PENDING'),
 (1, '20191003', 'UI/UX 디자인과 프론트엔드 연동에 관심이 많습니다.', 'APPROVED'),
@@ -126,55 +120,57 @@ INSERT INTO Applications (post_id, applicant_id, message, status) VALUES
 (4, '20201008', '백준 플래티넘 달성이 목표입니다. 매주 꾸준히 참여하겠습니다.', 'REJECTED'),
 (5, '20201015', '유니티 엔진으로 캐주얼 게임을 2회 출시한 경험이 있습니다.', 'APPROVED');
 
-
--- ==========================================
--- 출석 및 하드웨어 연동을 위한 추가 테이블
--- ==========================================
-
--- 4. 기기 정보 (Devices)
 CREATE TABLE IF NOT EXISTS Devices (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL COMMENT '연결된 팀(모집글) ID',
-    device_credential VARCHAR(255) NOT NULL COMMENT '기기 인증 정보 참조',
-    last_ack TIMESTAMP NULL COMMENT '마지막 디스플레이 확인/하트비트',
+    post_id INT NOT NULL,
+    device_credential VARCHAR(255) NOT NULL,
+    last_ack TIMESTAMP NULL,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE
 );
 
--- 5. 승인된 팀원 목록 (ApprovedMembers)
 CREATE TABLE IF NOT EXISTS ApprovedMembers (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL COMMENT '팀(모집글) ID',
-    member_id VARCHAR(20) NOT NULL COMMENT '승인된 팀원 학번 (Users 테이블 참조)',
-    application_id INT NOT NULL COMMENT '승인된 지원서 ID',
+    post_id INT NOT NULL,
+    member_id VARCHAR(20) NOT NULL,
+    application_id INT NOT NULL,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES Users(username) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES Applications(id) ON DELETE CASCADE
 );
 
--- 6. 출석 세션 (AttendanceSessions)
+INSERT INTO ApprovedMembers (post_id, member_id, application_id) VALUES
+(1, '20191003', 2),
+(5, '20201015', 5);
+
 CREATE TABLE IF NOT EXISTS AttendanceSessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL COMMENT '팀(모집글) ID',
-    device_id INT NOT NULL COMMENT '기기 ID',
-    leader_id VARCHAR(20) NOT NULL COMMENT '팀장 학번 (Users 테이블 참조)',
-    code VARCHAR(6) NOT NULL COMMENT '6자리 출석 코드',
-    status ENUM('OPEN', 'CLOSED') DEFAULT 'OPEN' COMMENT '세션 상태 (OPEN/CLOSED)',
-    display_ack BOOLEAN DEFAULT FALSE COMMENT '디스플레이 확인 여부',
-    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '시작 시간',
-    expiry_time TIMESTAMP NOT NULL COMMENT '만료 시간',
+    post_id INT NOT NULL,
+    device_id INT NOT NULL,
+    leader_id VARCHAR(20) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    status ENUM('OPEN', 'CLOSED') DEFAULT 'OPEN',
+    display_ack BOOLEAN DEFAULT FALSE,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expiry_time TIMESTAMP NOT NULL,
     FOREIGN KEY (post_id) REFERENCES Posts(id) ON DELETE CASCADE,
     FOREIGN KEY (device_id) REFERENCES Devices(id) ON DELETE CASCADE,
     FOREIGN KEY (leader_id) REFERENCES Users(username) ON DELETE CASCADE
 );
 
--- 7. 출석 기록 (AttendanceRecords)
 CREATE TABLE IF NOT EXISTS AttendanceRecords (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    session_id INT NOT NULL COMMENT '출석 세션 ID',
-    member_id VARCHAR(20) NOT NULL COMMENT '팀원 학번 (Users 테이블 참조)',
-    is_present TINYINT(1) DEFAULT 1 COMMENT '0: 결석, 1: 출석 (기본값 출석)',
-    checked_in_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '출석 체크된 시간',
+    session_id INT NOT NULL,
+    member_id VARCHAR(20) NOT NULL,
+    is_present TINYINT(1) DEFAULT 1,
+    checked_in_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES AttendanceSessions(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES Users(username) ON DELETE CASCADE,
-    UNIQUE (session_id, member_id) COMMENT '한 세션과 멤버의 쌍은 유일해야 함'
+    UNIQUE (session_id, member_id)
+);
+
+UPDATE Posts p
+SET current_size = 1 + (
+    SELECT COUNT(*)
+    FROM ApprovedMembers am
+    WHERE am.post_id = p.id
 );
