@@ -1,6 +1,8 @@
 # 모집 프로젝트 백엔드: 1단계
 
 Python 3.12 + FastAPI + SQLAlchemy + PyMySQL + MySQL을 사용합니다.
+현재 배포 구성은 **Render 웹 서버 + TiDB Cloud Starter(MySQL Compatible)**입니다.
+처음 연결할 때는 [Render + TiDB 단계별 안내](docs/render-tidb.md)를 따르세요.
 이번 단계는 서버 실행, DB 연결 확인, 로그인, 내 정보 조회, 모집글 목록/상세 조회입니다.
 회원가입, 모집글 작성, 지원/승인, 출석, ESP32 펌웨어는 다음 단계에서 추가합니다.
 
@@ -48,9 +50,12 @@ DB_PORT=3306
 DB_NAME=recruitment_db
 DB_USER=recruitment_app
 DB_PASSWORD="본인의 DB 비밀번호"
+DB_SSL=false
 ```
 
 배포 서버가 정해지면 같은 환경변수를 해당 서버에 등록하면 됩니다.
+TiDB Cloud에서는 Connect 화면의 호스트/포트/사용자/DB 비밀번호를 사용하고 `DB_SSL=true`를 설정합니다.
+Google 계정 로그인 비밀번호는 DB 비밀번호가 아닙니다.
 
 ## 2. MySQL 준비
 

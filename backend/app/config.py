@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     db_name: str = "recruitment_db"
     db_user: str = "recruitment_app"
     db_password: SecretStr
+    db_ssl: bool = False
     jwt_secret_key: SecretStr
     jwt_issuer: str = "recruitment-api"
     jwt_audience: str = "recruitment-web"

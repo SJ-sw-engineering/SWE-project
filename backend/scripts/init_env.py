@@ -16,7 +16,7 @@ def main() -> None:
     except FileExistsError:
         print(".env already exists; no changes made.")
         return
-    print("Created .env. Edit DB_HOST, DB_PORT, DB_NAME, DB_USER and DB_PASSWORD before connecting.")
+    print("Created .env. Edit DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD and DB_SSL before connecting.")
 
 
 if __name__ == "__main__":
