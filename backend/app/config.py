@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     jwt_issuer: str = "recruitment-api"
     jwt_audience: str = "recruitment-web"
     access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
+    refresh_token_expire_days: int = Field(default=14, ge=1, le=90)
     cors_origins: list[str] = [
         "http://localhost:5500",
         "http://127.0.0.1:5500",

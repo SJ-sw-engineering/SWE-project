@@ -1,10 +1,12 @@
-# 모집 프로젝트 백엔드: 1단계
+# 모집 프로젝트 백엔드
 
 Python 3.12 + FastAPI + SQLAlchemy + PyMySQL + MySQL을 사용합니다.
 현재 배포 구성은 **Render 웹 서버 + TiDB Cloud Starter(MySQL Compatible)**입니다.
 처음 연결할 때는 [Render + TiDB 단계별 안내](docs/render-tidb.md)를 따르세요.
-이번 단계는 서버 실행, DB 연결 확인, 로그인, 내 정보 조회, 모집글 목록/상세 조회입니다.
-회원가입, 모집글 작성, 지원/승인, 출석, ESP32 펌웨어는 다음 단계에서 추가합니다.
+현재 서버/DB 상태 확인, 회원가입, 로그인/갱신/로그아웃, 내 정보, 모집글 조회/작성/수정/삭제/마감을 제공합니다.
+추가 API의 요청/응답과 프론트 연결 방법은 [계정·모집글 API 안내](docs/accounts-and-posts.md)를 확인하세요.
+**이번 버전을 배포하기 전에 [AuthSessions 추가 SQL](migrations/001_auth_sessions.sql)을 기존 recruitment_db에 실행해야 합니다.**
+지원/승인 처리 API, 출석, ESP32 펌웨어는 다음 단계에서 추가합니다.
 
 ## 파일별 역할
 
@@ -13,13 +15,14 @@ Python 3.12 + FastAPI + SQLAlchemy + PyMySQL + MySQL을 사용합니다.
 | `app/main.py` | 앱 생성, 라우터 등록, CORS, 안전한 오류 응답 |
 | `app/config.py` | `.env` 및 서버 환경변수 읽기 |
 | `app/database.py` | MySQL 연결, 요청별 DB 세션 |
-| `app/models.py` | SQL의 `Users`, `Posts` 테이블 매핑 |
+| `app/models.py` | Users/Posts, 정원·내 지원 조회용 Applications/ApprovedMembers, AuthSessions 매핑 |
 | `app/schemas.py` | 입력 검증, 비밀번호가 없는 응답 모델 |
 | `app/security.py` | Argon2 비밀번호 해시, JWT 생성/검증 |
 | `app/dependencies.py` | DB 세션과 로그인 사용자 조회 |
 | `app/routers/health.py` | 서버/DB 상태 확인 |
-| `app/routers/auth.py` | JSON 로그인, 내 정보 조회 |
-| `app/routers/posts.py` | 공개 모집글 목록, 검색, 상세 조회 |
+| `app/routers/auth.py` | 회원가입, 로그인, 토큰 갱신, 서버 로그아웃, 내 정보 |
+| `app/routers/posts.py` | 공개 조회, 작성자 전용 작성/수정/삭제/마감, 내 상태 조회 |
+| `migrations/001_auth_sessions.sql` | 기존 데이터 보존하며 로그인 세션 테이블 추가 |
 | `scripts/init_env.py` | 기존 파일을 덮어쓰지 않고 `.env` 생성 |
 | `scripts/hash_seed_passwords.py` | SQL 테스트 계정의 평문 비밀번호를 해시로 변환 |
 | `requirements.txt` | 실행 라이브러리 |
@@ -63,7 +66,9 @@ Google 계정 로그인 비밀번호는 DB 비밀번호가 아닙니다.
 최신 파일은 기존 `recruitment_db.sql`과 테이블 구조가 같고, 승인 팀원과 현재 인원 샘플을 보완한 버전입니다.
 SQL에는 `DROP TABLE`이 있으므로 이미 운영 데이터가 있는 DB에서는 재실행하지 마세요.
 이 백엔드는 시작할 때 테이블을 만들거나 삭제하거나 샘플 데이터를 넣지 않습니다.
-프로젝트의 다른 다섯 테이블도 원본 SQL로 준비하되, 이번 단계에서는 `Users`, `Posts`만 사용합니다.
+프로젝트의 기존 일곱 테이블을 준비한 후 `migrations/001_auth_sessions.sql`로 AuthSessions를 추가합니다.
+이미 TiDB에 사용자/모집글이 있다면 원본 SQL을 다시 실행하지 말고 추가 SQL만 실행합니다.
+서버 재시작이나 새 배포 때마다 SQL을 다시 실행할 필요는 없습니다.
 대소문자까지 원본 테이블명과 일치해야 합니다.
 
 원본 SQL에는 생년월일 8자리 평문 비밀번호가 있습니다. API는 평문 비밀번호를 DB 값과 직접 비교하지 않습니다.
@@ -106,10 +111,18 @@ DB 계정은 앱에 필요한 권한만 부여하고, 스키마 생성/변경은
 | --- | --- | --- | --- |
 | GET | `/health` | 불필요 | 서버 실행 확인 |
 | GET | `/health/db` | 불필요 | 실제 DB 연결 확인 |
+| POST | `/api/auth/signup` | 불필요 | 회원가입 |
 | POST | `/api/auth/login` | 불필요 | 학번/비밀번호 로그인 |
+| POST | `/api/auth/refresh` | 갱신 토큰 | 토큰 교체/갱신 |
+| POST | `/api/auth/logout` | 접근 또는 갱신 토큰 | 현재 로그인 세션 종료 |
 | GET | `/api/users/me` | 필요 | 로그인한 사용자 조회 |
 | GET | `/api/posts` | 불필요 | 모집글 목록/검색 |
 | GET | `/api/posts/{post_id}` | 불필요 | 모집글 상세 |
+| POST | `/api/posts` | 필요 | 모집글 작성 |
+| PATCH | `/api/posts/{post_id}` | 작성자 | 모집글 부분 수정 |
+| DELETE | `/api/posts/{post_id}` | 작성자 | 모집글과 관련 기록 삭제 |
+| POST | `/api/posts/{post_id}/close` | 작성자 | 수동 마감 |
+| GET | `/api/posts/{post_id}/context` | 필요 | 팀장 여부와 본인 지원 상태 |
 
 ### 로그인
 
@@ -128,13 +141,19 @@ Swagger의 `/api/auth/login`에서 `Try it out`을 눌러 다음 값을 넣을 �
   "access_token": "발급된 JWT",
   "token_type": "bearer",
   "expires_in": 1800,
+  "refresh_token": "발급된 갱신 토큰",
+  "refresh_expires_in": 1209599,
   "user": {"username": "20191001", "name": "학생1", "created_at": "2026-10-06T00:00:00Z"}
 }
 ```
 
 이 응답의 토큰을 Swagger 상단 `Authorize`에 넣으세요. 토큰 문자열만 입력하면 됩니다.
 프론트엔드에서는 보호된 API 요청에 `Authorization: Bearer 발급된토큰` 헤더를 붙입니다.
-토큰은 기본 30분 뒤 만료됩니다. 이 단계에는 갱신 토큰이나 서버 측 로그아웃 기능이 없습니다.
+접근 토큰은 기본 30분, 로그인 세션과 갱신 토큰은 기본 14일입니다.
+갱신할 때마다 refresh_token을 교체하며, 최초 로그인 시점의 14일 제한은 연장하지 않습니다.
+서버 로그아웃 후에는 해당 세션에서 발급한 접근/갱신 토큰이 모두 거부됩니다.
+같은 계정으로 다른 탭/기기에서 따로 로그인한 세션은 유지됩니다.
+이 버전 이전의 세션 ID 없는 JWT는 다시 로그인해야 합니다.
 
 PowerShell에서도 전체 흐름을 확인할 수 있습니다.
 
@@ -176,7 +195,8 @@ GET /api/posts?category=Web%2FFrontend&status=RECRUITING
 ```
 
 오류는 `{ "detail": ... }` 형식입니다.
-401: 로그인 실패/토큰 오류, 404: 없는 모집글, 422: 입력 오류, 503: DB 처리 실패.
+401: 로그인 실패/토큰 오류, 403: 작성자 권한 없음, 404: 없는 모집글,
+409: 아이디 중복/현재 인원보다 작은 정원, 422: 입력 오류, 503: DB 처리 실패.
 잘못된 로그인은 존재하지 않는 계정과 잘못된 비밀번호에 같은 응답을 제공합니다.
 
 ## 5. 팀원과 연결
@@ -207,11 +227,13 @@ Git 초기화 후 `git status --short`와 `git diff --cached --name-only`로 실
 ```
 
 테스트는 독립적인 메모리 SQLite를 사용하며 본인의 MySQL은 읽거나 수정하지 않습니다.
+2026-10-26 버전은 독립 테스트 **60개 통과**를 확인했습니다. 회원가입, 토큰 교체/로그아웃,
+작성자 권한, 현재 승인 인원에 따른 정원 검증, 연관 데이터 삭제, CORS와 기존 API를 포함합니다.
 로그인/토큰 검증, 비밀값 비노출, DB 오류 처리, 검색/필터/페이지, 비밀번호 변환의 재실행을 확인합니다.
 테스트 통과와 별개로 본인의 MySQL 연결은 `/health/db`에서 확인해야 합니다.
 검증 시 정확한 패키지 버전은 lock 파일에 기록합니다. 범위 기반 requirements는 향후 업데이트 검토용입니다.
 
-작성 시 검증 결과: 독립 테스트 23개 통과. 별도의 임시 MySQL 8.4에서 첨부 SQL의 7개 테이블,
+이전 1단계 검증 기록: 독립 테스트 23개 통과. 별도의 임시 MySQL 8.4에서 첨부 SQL의 7개 테이블,
 70개 계정 해시 변환, 로그인/내 정보/한글 검색/필터/페이지/상세 조회를 확인했습니다.
 2026-10-07 수정본 `recruitment_db (1).sql`도 임시 MySQL 8.4에서 검증했습니다.
 승인 팀원 2명과 모집글별 재계산 인원(2, 1, 1, 1, 2)이 API에 반영되며 기존 테스트 23개도 통과합니다.
@@ -220,11 +242,10 @@ Git 초기화 후 `git status --short`와 `git diff --cached --name-only`로 실
 
 ## 다음 구현 순서
 
-1. 모집글 작성/수정/삭제와 작성자 권한
+1. 프론트 서버 모드에 회원가입/모집글 관리/토큰 갱신/로그아웃 연결
 2. 지원과 승인/거절, 승인 팀원/인원수/모집 상태의 트랜잭션 처리
-3. 회원가입/프로필과 필요한 스키마 확장
-4. 5분 출석 세션, 6자리 문자열 코드, 회원 출석 입력, 중복 방지
-5. ESP32 인증/2초 조회/표시 완료 확인과 LCD 연동
+3. 5분 출석 세션, 6자리 문자열 코드, 회원 출석 입력, 중복 방지
+4. ESP32 인증/코드 조회/표시 완료 확인과 LCD 연동
 
 출석 코드는 일반 팀원 조회 응답에 포함하지 않고 인증된 기기 API에서만 전달하는 계획입니다.
 최신 SQL에서 승인 팀원 등록과 현재 인원 재계산은 반영되었습니다.

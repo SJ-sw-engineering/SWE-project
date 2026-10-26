@@ -184,6 +184,63 @@ Render가 제공한 실제 서비스 주소 뒤에 경로를 붙여 확인합니
 /docs에서 POST /api/auth/login에 학번 20191001, 비밀번호 20000115를 JSON으로 입력하면
 해시 변환 후 로그인 토큰을 받을 수 있습니다. 이는 첨부 샘플 계정으로만 사용하는 값입니다.
 
+## 10. GitHub Actions로 5분 간격 상태 확인
+
+저장소 루트의 `.github/workflows/render-keep-alive.yml`을 사용합니다.
+`backend/.github/` 아래에 두면 GitHub Actions가 인식하지 않습니다.
+워크플로는 DB 조회가 없는 `/health`에 HTTPS GET 요청을 보냅니다.
+
+1. GitHub 저장소의 Settings > Secrets and variables > Actions를 엽니다.
+2. Variables 탭 > New repository variable을 선택합니다.
+3. Name은 `RENDER_HEALTH_URL`, Value는 `https://본인서비스.onrender.com/health`로 설정합니다.
+4. 워크플로 파일을 저장소의 **기본 브랜치(default branch)**에 반영합니다.
+   기본 브랜치가 main이면 backend 브랜치에만 push한 상태로는 예약 실행되지 않습니다.
+   전체 backend 코드를 아직 합치지 않더라도 이 워크플로 파일만 main에 추가할 수 있습니다.
+5. Actions > Render keep alive > Run workflow로 한 번 직접 실행하여 성공 여부를 확인합니다.
+
+이 변수는 GitHub Actions가 호출할 공개 URL입니다. Render 환경변수와는 별개이며,
+DB_PASSWORD나 JWT_SECRET_KEY를 GitHub Actions에 복사할 필요는 없습니다.
+사용자의 push 및 GitHub 설정이 완료되어야 동작합니다.
+
+GitHub 예약 실행은 정확히 5분마다 실행된다고 보장하지 않습니다. 혼잡 시 지연되거나
+실행이 누락될 수 있으므로 Render의 sleep을 완전히 방지한다고 보장할 수 없습니다.
+공개 저장소는 60일간 활동이 없으면 예약 실행이 비활성화될 수 있습니다.
+표준 Ubuntu runner는 공개 저장소에서 무료이고 비공개 저장소는 Actions 무료 시간 한도가 있습니다.
+5분 간격은 하루 288회이므로 비공개 저장소에서는 Billing의 사용량/예산을 확인합니다.
+저장소를 공개로 바꾸기 전에 팀과 협의하고 비밀값이나 실제 개인정보가 포함되어 있지 않은지 확인합니다.
+Render 무료 실행 시간은 워크스페이스 전체 월 750시간으로, 상시 실행도 이 시간을 사용합니다.
+
+## 11. main 브랜치로 통합한 뒤 Render 변경
+
+GitHub 기본 브랜치와 Render의 배포 브랜치는 서로 다른 설정입니다.
+backend를 main에 merge해도 Render가 자동으로 main을 따라가지는 않습니다.
+
+1. main 브랜치에 `backend/app/main.py`와 `backend/requirements.lock.txt`가 있는지 확인합니다.
+2. 기존 Render 웹 서비스 > Settings에서 배포 소스의 Branch를 `backend`에서 `main`으로 변경합니다.
+   화면에 Source > Edit가 표시되면 같은 저장소를 선택하고 Branch를 main으로 지정합니다.
+3. 합친 후에도 백엔드 폴더가 backend라면 Root Directory는 `backend`로 유지합니다.
+4. Build/Start Command와 Environment의 DB/JWT 설정을 유지하고 저장/배포합니다.
+5. 새 배포가 시작되지 않으면 Manual Deploy > Deploy latest commit을 선택합니다.
+6. `/health`, `/health/db`, `/api/posts`와 로그인을 다시 확인합니다.
+
+같은 Render 서비스를 계속 쓰면 서비스 URL과 기존 환경변수는 유지됩니다.
+TiDB의 테이블/데이터나 비밀번호 해시 변환을 다시 만들 필요는 없습니다.
+Auto-Deploy가 On Commit이면 이후 main으로 push/merge할 때 배포됩니다.
+backend 브랜치에만 push한 변경은 main에 합친 후 배포됩니다.
+main의 워크플로도 같은 서버 URL을 호출하므로 RENDER_HEALTH_URL은 URL이 바뀔 때만 수정합니다.
+
+## 12. 회원가입·모집글 관리·로그아웃 버전으로 업데이트
+
+2026-10-26 버전부터 서버 로그아웃과 토큰 갱신을 위해 AuthSessions 테이블을 사용합니다.
+기존 TiDB의 recruitment_db를 선택하고 `backend/migrations/001_auth_sessions.sql` 전체를 먼저 실행합니다.
+이 SQL은 기존 사용자/모집글을 지우지 않고 테이블 하나만 추가합니다. 총 여덟 테이블이 됩니다.
+기존 원본 SQL의 DROP/INSERT를 다시 실행하지 않습니다.
+그다음 코드를 push하고 Render의 현재 연결 브랜치에서 배포합니다.
+기존 DB_*와 JWT_SECRET_KEY는 그대로 쓰며 REFRESH_TOKEN_EXPIRE_DAYS는 생략하면 14일입니다.
+새 배포 후 이전 토큰은 한 번 재로그인해야 합니다.
+프론트는 새 refresh/logout API를 별도로 연결해야 실제 갱신/서버 로그아웃을 사용할 수 있습니다.
+요청/응답과 확인 순서는 [계정·모집글 API 안내](accounts-and-posts.md)를 확인하세요.
+
 ## 참고 문서
 
 - TiDB 생성: https://docs.pingcap.com/tidbcloud/create-tidb-cluster-serverless/
@@ -191,5 +248,9 @@ Render가 제공한 실제 서비스 주소 뒤에 경로를 붙여 확인합니
 - PyMySQL: https://docs.pingcap.com/developer/dev-guide-sample-application-python-pymysql/
 - Render 환경변수: https://render.com/docs/configure-environment-variables
 - Render Outbound IP: https://render.com/docs/outbound-ip-addresses
+- Render 배포: https://render.com/docs/deploys
+- GitHub 예약 실행: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+- GitHub 변수: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
+- GitHub Actions 비용: https://docs.github.com/en/billing/concepts/product-billing/github-actions
 
 코드/설정 검증과 별개로 실제 TiDB 계정 연결은 본인 접속 정보를 설정한 후 확인해야 합니다.

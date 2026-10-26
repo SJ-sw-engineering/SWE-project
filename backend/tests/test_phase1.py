@@ -139,4 +139,8 @@ def test_hash_migration_dry_run_then_apply_is_repeatable(engine, client):
 def test_database_health_and_documented_endpoints(client):
     assert client.get("/health/db").json() == {"status": "ok", "database": "connected"}
     paths = client.get("/openapi.json").json()["paths"]
-    assert set(paths) == {"/health", "/health/db", "/api/auth/login", "/api/users/me", "/api/posts", "/api/posts/{post_id}"}
+    assert set(paths) == {
+        "/health", "/health/db", "/api/auth/signup", "/api/auth/login", "/api/auth/refresh",
+        "/api/auth/logout", "/api/users/me", "/api/posts", "/api/posts/{post_id}",
+        "/api/posts/{post_id}/close", "/api/posts/{post_id}/context",
+    }

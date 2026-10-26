@@ -1,8 +1,8 @@
-"""Map the two tables used in phase 1, preserving the supplied SQL names."""
+"""Existing recruitment tables and persistent, revocable login sessions."""
 
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Integer, String, Text, TIMESTAMP, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, TIMESTAMP, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -45,3 +45,41 @@ class Post(Base):
     @property
     def author_name(self) -> str:
         return self.author.name
+
+
+class Application(Base):
+    __tablename__ = "Applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
+    applicant_id: Mapped[str] = mapped_column(ForeignKey("Users.username", ondelete="CASCADE"))
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(
+        Enum("PENDING", "APPROVED", "REJECTED", name="application_status"),
+        nullable=True, server_default=text("'PENDING'"),
+    )
+    applied_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP, nullable=True, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class ApprovedMember(Base):
+    __tablename__ = "ApprovedMembers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
+    member_id: Mapped[str] = mapped_column(ForeignKey("Users.username", ondelete="CASCADE"))
+    application_id: Mapped[int] = mapped_column(ForeignKey("Applications.id", ondelete="CASCADE"))
+
+
+class AuthSession(Base):
+    __tablename__ = "AuthSessions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    username: Mapped[str] = mapped_column(
+        String(20), ForeignKey("Users.username", ondelete="CASCADE"), nullable=False, index=True
+    )
+    refresh_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

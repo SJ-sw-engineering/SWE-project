@@ -9,14 +9,14 @@ os.environ["DB_PASSWORD"] = "not-used-by-sqlite-tests"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.config import Settings, get_settings
 from app.database import Base, get_db
 from app.main import create_app
-from app.models import Post, User
+from app.models import Application, ApprovedMember, Post, User
 from app.security import hash_password
 
 
@@ -35,6 +35,10 @@ def engine():
     test_engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+    @event.listens_for(test_engine, "connect")
+    def enforce_foreign_keys(connection, _record):
+        connection.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(test_engine)
     with Session(test_engine) as db:
         db.add_all([
@@ -53,6 +57,16 @@ def engine():
             Post(id=3, author_id="20191001", title="100% 참여_스터디", content="리액트 심화",
                  category="Web/Frontend", target_size=2, current_size=1, status="RECRUITING",
                  created_at=datetime(2026, 10, 2)),
+        ])
+        db.flush()
+        db.add_all([
+            Application(id=1, post_id=2, applicant_id="20191001", message="지원1", status="APPROVED"),
+            Application(id=2, post_id=2, applicant_id="20191003", message="지원2", status="APPROVED"),
+        ])
+        db.flush()
+        db.add_all([
+            ApprovedMember(post_id=2, member_id="20191001", application_id=1),
+            ApprovedMember(post_id=2, member_id="20191003", application_id=2),
         ])
         db.commit()
     yield test_engine
