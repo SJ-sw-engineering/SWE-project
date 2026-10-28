@@ -241,6 +241,17 @@ main의 워크플로도 같은 서버 URL을 호출하므로 RENDER_HEALTH_URL�
 프론트는 새 refresh/logout API를 별도로 연결해야 실제 갱신/서버 로그아웃을 사용할 수 있습니다.
 요청/응답과 확인 순서는 [계정·모집글 API 안내](accounts-and-posts.md)를 확인하세요.
 
+## 13. 지원·승인·내 활동 0.3.0 업데이트
+
+이번 버전은 기존 테이블에 중복 방지 UNIQUE 제약 세 개를 추가하며 테이블 수는 여덟 개 그대로입니다.
+SQL Editor에서 002_applications_precheck.sql 전체를 먼저 실행하고 여섯 결과가 모두 0행인지 확인합니다.
+그다음 002_applications_unique.sql을 한 번 실행하고 002_applications_verify.sql로 확인합니다.
+각 파일에 USE recruitment_db가 포함되어 있습니다. 원본 초기화 SQL을 다시 실행하지 않습니다.
+002 변경 SQL은 현재 인원을 승인 멤버 기준으로 맞추고 정원이 찬 모집글을 CLOSED로 보정합니다.
+적용 중 쓰기 테스트는 잠시 멈춥니다. DDL 일부가 이미 반영되었다면 기존 인덱스를 확인한 뒤 누락된 ALTER만 실행합니다.
+코드를 연결된 backend 브랜치에 push하고 배포가 성공한 뒤 /docs 버전 0.3.0과 새 API 5개를 확인합니다.
+승인·거절과 실제 DB 결과를 대조하는 전체 순서는 [지원·승인·내 활동 안내](applications-and-activities.md)에 있습니다.
+
 ## 참고 문서
 
 - TiDB 생성: https://docs.pingcap.com/tidbcloud/create-tidb-cluster-serverless/

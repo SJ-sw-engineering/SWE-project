@@ -143,4 +143,6 @@ def test_database_health_and_documented_endpoints(client):
         "/health", "/health/db", "/api/auth/signup", "/api/auth/login", "/api/auth/refresh",
         "/api/auth/logout", "/api/users/me", "/api/posts", "/api/posts/{post_id}",
         "/api/posts/{post_id}/close", "/api/posts/{post_id}/context",
+        "/api/posts/{post_id}/applications", "/api/applications/{application_id}",
+        "/api/users/me/applications", "/api/users/me/teams",
     }

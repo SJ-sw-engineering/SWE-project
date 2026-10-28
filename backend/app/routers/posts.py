@@ -5,31 +5,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import CurrentUser, DbSession
-from app.models import Application, ApprovedMember, Post, User
+from app.models import Application, Post
 from app.schemas import ApplicationContext, MessageResponse, PostContext, PostCreate, PostDetail, PostPage, PostStatus, PostSummary, PostUpdate
+from app.services.recruitment import owned_post, sync_size
 
 router = APIRouter(prefix="/posts", tags=["모집글"])
 PostId = Annotated[int, Path(ge=1)]
-
-
-def owned_post(post_id: int, user: User, db: DbSession) -> Post:
-    post = db.scalar(select(Post).where(Post.id == post_id).with_for_update())
-    if post is None:
-        raise HTTPException(status_code=404, detail="모집글을 찾을 수 없습니다.")
-    if post.author_id != user.username:
-        raise HTTPException(status_code=403, detail="작성자만 모집글을 관리할 수 있습니다.")
-    return post
-
-
-def sync_size(post: Post, db: DbSession) -> None:
-    # Locking reads see current rows even after authentication started a
-    # repeatable-read transaction. Future approvals must lock the same post.
-    members = db.scalars(select(ApprovedMember.id).where(
-        ApprovedMember.post_id == post.id
-    ).with_for_update()).all()
-    post.current_size = 1 + len(members)
-    if post.current_size >= post.target_size:
-        post.status = "CLOSED"
 
 
 @router.get("", response_model=PostPage)

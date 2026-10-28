@@ -115,3 +115,42 @@ class ApplicationContext(BaseModel):
 class PostContext(BaseModel):
     is_owner: bool
     my_application: ApplicationContext | None
+
+
+class ApplicationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+
+
+class ApplicationDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["APPROVED", "REJECTED"]
+
+
+class ApplicationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    post_id: int
+    applicant_id: str
+    message: str
+    status: Literal["PENDING", "APPROVED", "REJECTED"] | None
+    applied_at: datetime | None
+
+    @field_validator("applied_at")
+    @classmethod
+    def utc_applied_at(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
+
+class ApplicantResponse(ApplicationResponse):
+    name: str
+
+
+class MyApplicationResponse(ApplicationResponse):
+    post: PostSummary
+
+
+class TeamResponse(PostSummary):
+    role: Literal["LEADER", "MEMBER"]

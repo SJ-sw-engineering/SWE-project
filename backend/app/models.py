@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, TIMESTAMP, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, TIMESTAMP, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -49,6 +49,7 @@ class Post(Base):
 
 class Application(Base):
     __tablename__ = "Applications"
+    __table_args__ = (UniqueConstraint("post_id", "applicant_id", name="uq_applications_post_applicant"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
@@ -61,10 +62,15 @@ class Application(Base):
     applied_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP, nullable=True, server_default=text("CURRENT_TIMESTAMP")
     )
+    post: Mapped[Post] = relationship()
 
 
 class ApprovedMember(Base):
     __tablename__ = "ApprovedMembers"
+    __table_args__ = (
+        UniqueConstraint("post_id", "member_id", name="uq_approved_post_member"),
+        UniqueConstraint("application_id", name="uq_approved_application"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
