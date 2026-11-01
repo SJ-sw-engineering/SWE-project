@@ -145,4 +145,7 @@ def test_database_health_and_documented_endpoints(client):
         "/api/posts/{post_id}/close", "/api/posts/{post_id}/context",
         "/api/posts/{post_id}/applications", "/api/applications/{application_id}",
         "/api/users/me/applications", "/api/users/me/teams",
+        "/api/posts/{post_id}/devices", "/api/devices/{device_id}/display", "/api/devices/{device_id}/ack",
+        "/api/posts/{post_id}/attendance-sessions", "/api/attendance-sessions/{session_id}/close",
+        "/api/attendance-sessions/{session_id}/records", "/api/attendance-sessions/{session_id}/check-in",
     }

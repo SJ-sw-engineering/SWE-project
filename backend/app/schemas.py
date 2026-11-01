@@ -154,3 +154,85 @@ class MyApplicationResponse(ApplicationResponse):
 
 class TeamResponse(PostSummary):
     role: Literal["LEADER", "MEMBER"]
+
+
+class AttendanceTimes(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("start_time", "expiry_time", "checked_in_at", "last_ack", "server_time", check_fields=False)
+    @classmethod
+    def utc_times(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
+
+class DeviceResponse(AttendanceTimes):
+    id: int
+    post_id: int
+    last_ack: datetime | None
+
+
+class DeviceCreated(DeviceResponse):
+    # Returned once to the owning leader; never included by the list endpoint.
+    device_credential: str
+
+
+class AttendanceStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    device_id: int = Field(ge=1)
+
+
+class AttendanceCode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    code: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+
+class AttendanceRecordResponse(AttendanceTimes):
+    id: int
+    session_id: int
+    member_id: str
+    is_present: int | None
+    checked_in_at: datetime | None
+
+
+class AttendanceSessionResponse(AttendanceTimes):
+    id: int
+    post_id: int
+    device_id: int
+    leader_id: str
+    status: Literal["OPEN", "CLOSED"]
+    display_ack: bool
+    start_time: datetime | None
+    expiry_time: datetime
+    my_record: AttendanceRecordResponse | None = None
+
+
+class AttendanceRosterMember(BaseModel):
+    member_id: str
+    name: str
+    record: AttendanceRecordResponse | None
+
+
+class DisplaySession(AttendanceTimes):
+    id: int
+    code: str
+    expiry_time: datetime
+    expires_in: int
+    display_ack: bool
+
+
+class DeviceDisplay(AttendanceTimes):
+    server_time: datetime
+    poll_after_seconds: int
+    session: DisplaySession | None
+
+
+class DisplayAck(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    session_id: int = Field(ge=1)
+
+
+class DisplayAckResponse(BaseModel):
+    session_id: int
+    display_ack: Literal[True] = True

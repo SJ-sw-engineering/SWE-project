@@ -252,6 +252,16 @@ SQL Editor에서 002_applications_precheck.sql 전체를 먼저 실행하고 여
 코드를 연결된 backend 브랜치에 push하고 배포가 성공한 뒤 /docs 버전 0.3.0과 새 API 5개를 확인합니다.
 승인·거절과 실제 DB 결과를 대조하는 전체 순서는 [지원·승인·내 활동 안내](applications-and-activities.md)에 있습니다.
 
+## 14. 출석·ESP32 0.4.0 업데이트
+
+현재 DB의 기존 Devices/AttendanceSessions/AttendanceRecords를 사용하므로 새 DB 변경 SQL은 필요하지 않습니다.
+필요하면 migrations/003_attendance_precheck.sql로 구조와 중복 방지 인덱스를 읽기 전용 확인합니다.
+001·002는 이미 적용했다면 다시 실행하지 않습니다. 코드를 push/배포한 뒤 /docs의 0.4.0과 출석·장치 API를 확인합니다.
+기기 등록은 팀장 Bearer로 진행하고, ESP32에는 발급된 장치 ID와 device_credential 원문을 설정합니다.
+장치 키는 X-Device-Key 헤더로 전송합니다. ESP32는 Render의 공개 HTTPS API에 Wi-Fi로 접속하고 TiDB에 직접 접속하지 않습니다.
+Swagger/DB 확인은 [출석·ESP32 안내](attendance-and-esp32.md), Arduino 예제는 [firmware 안내](../../firmware/README.md)를 따릅니다.
+실제 LCD 함수는 성공했던 사용자 예제를 받은 뒤 연결합니다.
+
 ## 참고 문서
 
 - TiDB 생성: https://docs.pingcap.com/tidbcloud/create-tidb-cluster-serverless/

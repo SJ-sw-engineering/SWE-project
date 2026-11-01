@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, TIMESTAMP, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, TIMESTAMP, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -89,3 +89,39 @@ class AuthSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Device(Base):
+    __tablename__ = "Devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
+    device_credential: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_ack: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+
+
+class AttendanceSession(Base):
+    __tablename__ = "AttendanceSessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("Posts.id", ondelete="CASCADE"))
+    device_id: Mapped[int] = mapped_column(ForeignKey("Devices.id", ondelete="CASCADE"))
+    leader_id: Mapped[str] = mapped_column(ForeignKey("Users.username", ondelete="CASCADE"))
+    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    status: Mapped[str | None] = mapped_column(
+        Enum("OPEN", "CLOSED", name="attendance_status"), nullable=True, server_default=text("'OPEN'")
+    )
+    display_ack: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default=text("0"))
+    start_time: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True, server_default=text("CURRENT_TIMESTAMP"))
+    expiry_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+
+
+class AttendanceRecord(Base):
+    __tablename__ = "AttendanceRecords"
+    __table_args__ = (UniqueConstraint("session_id", "member_id", name="uq_attendance_session_member"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("AttendanceSessions.id", ondelete="CASCADE"))
+    member_id: Mapped[str] = mapped_column(ForeignKey("Users.username", ondelete="CASCADE"))
+    is_present: Mapped[int | None] = mapped_column(Integer, nullable=True, server_default=text("1"))
+    checked_in_at: Mapped[datetime | None] = mapped_column(TIMESTAMP, nullable=True, server_default=text("CURRENT_TIMESTAMP"))

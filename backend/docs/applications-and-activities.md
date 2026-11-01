@@ -2,6 +2,9 @@
 
 2026-10-28 / API 버전 0.3.0
 
+이 문서는 지원 기능 도입 시점의 안내입니다. 현재 버전은 README를 확인하세요.
+출석/장치 API는 0.4.0에 추가되었으며 [출석·ESP32 안내](attendance-and-esp32.md)에 별도로 정리했습니다.
+
 frontend 브랜치 `5bf7f33`의 apply/applicants/decide/myApplications/myTeams 함수에 맞춘 서버 계약입니다.
 이번 작업은 백엔드 코드와 DB 변경 SQL 작성입니다. 프론트 코드 변경, GitHub push/merge, Render 배포, 실제 TiDB 변경은 수행하지 않았습니다.
 
@@ -114,7 +117,7 @@ post 필드는 id/author_name/title/category/target_size/current_size/status/cre
 3. 여섯 SELECT 결과가 모두 빈 결과인지 확인합니다. 행이 있으면 DB 담당자가 정합성을 먼저 정리해야 합니다. 자동으로 중복 행을 삭제하지 않습니다.
 4. `migrations/002_applications_unique.sql` 전체를 실행합니다. 세 고유 제약과 인원/마감 보정을 적용합니다.
 5. `migrations/002_applications_verify.sql` 전체를 실행해 아래 결과를 확인합니다.
-6. 백엔드 코드를 backend 브랜치에 push하고 Render에 0.3.0이 배포되었는지 확인합니다.
+6. 백엔드 코드를 backend 브랜치에 push하고 Render에 0.3.0 이상이 배포되었는지 확인합니다.
 
 DDL은 전체 롤백되지 않으므로 변경 SQL은 한 번 적용합니다. 도중 실패하면 SHOW INDEX로 이미 생성된 제약을 확인하고 누락된 ALTER만 실행합니다.
 같은 SQL을 재실행하다 인덱스 이름 중복 오류가 나더라도 테이블을 지우지 않습니다.
@@ -133,7 +136,7 @@ DDL은 전체 롤백되지 않으므로 변경 SQL은 한 번 적용합니다. �
 
 ## 3. Swagger + 실제 TiDB 테스트 순서
 
-배포 후 /docs에 버전 0.3.0과 위 5개 API가 보여야 합니다.
+배포 후 /docs에 버전 0.3.0 이상과 위 5개 API가 보여야 합니다.
 기존 테스트 계정을 바꾸기보다, 아래처럼 새 계정 세 개와 테스트 모집글 하나를 사용합니다.
 
 | 역할 | 예시 username | 예시 name |
@@ -251,7 +254,7 @@ B의 내 지원에는 REJECTED가 보이고 내 팀에는 P가 없어야 합니�
 .\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
 ```
 
-일반 테스트는 SQLite를 사용합니다. 로컬 MySQL 테스트 4개는 전용 환경변수가 없으면 skip됩니다.
+일반 테스트는 SQLite를 사용합니다. 로컬 MySQL 테스트는 전용 환경변수가 없으면 skip됩니다.
 2026-10-28 결과: SQLite 독립 테스트 81개 통과, 별도 로컬 MySQL 8.4 테스트 4개 통과.
 
 MySQL 테스트는 기존 구조에서 UNIQUE가 없는 상태를 구성한 뒤 실제 001/002 SQL을 적용합니다.
@@ -272,12 +275,12 @@ $env:RECRUITMENT_MYSQL_TEST_PASSWORD = '그 컨테이너의 root 비밀번호'
 
 ## 6. 다음 단계와 진척도
 
-다음 구현은 출석 시작/종료/코드 인증/회차 이력/팀원 현황 API와 장치 코드 조회/ACK API입니다.
+0.3.0 당시 다음 구현이었던 출석 시작/종료/코드 인증/회차 이력/팀원 현황 API와 장치 코드 조회/ACK API는 0.4.0에서 구현했습니다.
 일반 사용자 조회에는 출석 코드를 넣지 않고, 인증된 ESP32에만 코드를 제공합니다.
 
 전체 100을 proposal 기능이 프론트·서버·DB·실기기까지 연결되어 검증된 상태로 정의하면 현재는 약 60~65%로 추정합니다.
 이는 작업 범위에 따른 추정이며 테스트 개수나 API 개수로 계산한 수치는 아닙니다.
-현재 일반 웹 백엔드의 주요 기능이 구현되었고, 프론트의 추가 API 연결과 출석/ESP32 통합 검증이 남아 있습니다.
+위 진척도는 2026-10-28 당시 추정입니다. 이후 작업 상태와 남은 통합 검증은 최신 README를 확인하세요.
 
 ESP32는 지금부터 LCD 기본 출력과 Wi-Fi 연결을 점검할 수 있습니다.
 서버 연동은 다음 출석·장치 API의 요청/응답을 확정한 뒤 함께 시작하는 것이 좋습니다.

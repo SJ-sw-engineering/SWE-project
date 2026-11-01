@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.main import create_app
-from app.models import Application, ApprovedMember, Post, User
+from app.models import Application, ApprovedMember, AttendanceRecord, AttendanceSession, Device, Post, User
 from app.security import hash_password
 
 MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
@@ -44,9 +44,9 @@ def mysql_engine():
         connection.exec_driver_sql(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
     engine = create_engine(url.set(database=database), connect_args={"init_command": "SET time_zone = '+00:00'"})
     try:
-        # Reconstruct the original four relevant tables, before the new uniques.
+        # Reconstruct the original seven tables, before the new application uniques.
         legacy = MetaData()
-        for model in [User, Post, Application, ApprovedMember]:
+        for model in [User, Post, Application, ApprovedMember, Device, AttendanceSession, AttendanceRecord]:
             table = model.__table__.to_metadata(legacy)
             for constraint in list(table.constraints):
                 if isinstance(constraint, UniqueConstraint) and constraint.name in UNIQUE_NAMES:

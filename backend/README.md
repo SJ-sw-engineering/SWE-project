@@ -5,7 +5,9 @@ Python 3.12 + FastAPI + SQLAlchemy + PyMySQL + MySQL을 사용합니다.
 이 문서는 이미 배포된 Render 서버를 기준으로 안내합니다.
 PC에서 직접 개발·실행할 때는 [로컬 개발 안내](docs/local-development.md), 새 서버를 구성할 때는 [Render + TiDB 단계별 안내](docs/render-tidb.md)를 참고하세요.
 현재 서버/DB 상태 확인, 회원가입, 로그인/갱신/로그아웃, 내 정보, 모집글 조회/작성/수정/삭제/마감,
-지원/지원자 조회/승인·거절/내 지원/내 팀을 제공합니다. API 버전은 0.3.0입니다.
+지원/지원자 조회/승인·거절/내 지원/내 팀, 출석 시작·종료·인증·이력, ESP32 장치 등록·코드 조회·ACK를 제공합니다.
+코드의 API 버전은 0.4.0입니다.
+출석과 기기 준비/Swagger 검증은 [출석·ESP32 안내](docs/attendance-and-esp32.md), Arduino IDE 예제는 [firmware 안내](../firmware/README.md)를 확인하세요.
 새 지원 API와 DB 변경/Swagger 테스트 순서는 [지원·승인·내 활동 안내](docs/applications-and-activities.md)를 확인하세요.
 추가 API의 요청/응답과 프론트 연결 방법은 [계정·모집글 API 안내](docs/accounts-and-posts.md)를 확인하세요.
 **기존 DB에 001·002 변경을 적용하고 확인까지 마쳤다면, SQL 재실행 없이 코드를 push·배포하면 됩니다.**
@@ -19,7 +21,9 @@ DB 변경을 아직 적용하지 않은 환경에서만 아래 순서를 따릅�
 - 이 작업은 DB별 최초 적용 안내이며, push·재배포·서버 재시작마다 반복하지 않습니다.
 - migrations/의 SQL 파일은 팀원 공유와 새 DB 구성에 필요한 변경 이력으로 보관합니다.
 
-기존 8개 테이블은 유지됩니다. 출석과 ESP32 펌웨어는 다음 단계에서 추가합니다.
+기존 8개 테이블을 유지합니다. 0.4.0은 기존 출석/장치 테이블을 그대로 사용하므로 추가 DB 변경이 없습니다.
+[003 출석 구조 점검](migrations/003_attendance_precheck.sql)은 필요할 때 실행하는 읽기 전용 SQL입니다.
+ESP32 네트워크 예제는 작성했으며, 실제 LCD 출력 함수는 사용자가 추후 제공할 예제에 맞춰 연결해야 합니다.
 
 ## 파일별 역할
 
@@ -28,7 +32,7 @@ DB 변경을 아직 적용하지 않은 환경에서만 아래 순서를 따릅�
 | `app/main.py` | 앱 생성, 라우터 등록, CORS, 안전한 오류 응답 |
 | `app/config.py` | `.env` 및 서버 환경변수 읽기 |
 | `app/database.py` | MySQL 연결, 요청별 DB 세션 |
-| `app/models.py` | Users/Posts, 정원·내 지원 조회용 Applications/ApprovedMembers, AuthSessions 매핑 |
+| `app/models.py` | 기존 모집/출석/기기 테이블과 AuthSessions 총 8개 테이블 매핑 |
 | `app/schemas.py` | 입력 검증, 비밀번호가 없는 응답 모델 |
 | `app/security.py` | Argon2 비밀번호 해시, JWT 생성/검증 |
 | `app/dependencies.py` | DB 세션과 로그인 사용자 조회 |
@@ -36,7 +40,10 @@ DB 변경을 아직 적용하지 않은 환경에서만 아래 순서를 따릅�
 | `app/routers/auth.py` | 회원가입, 로그인, 토큰 갱신, 서버 로그아웃, 내 정보 |
 | `app/routers/posts.py` | 공개 조회, 작성자 전용 작성/수정/삭제/마감, 내 상태 조회 |
 | `app/routers/applications.py` | 지원/승인·거절/내 활동 API 5개 |
+| `app/routers/attendance.py` | 출석 시작/종료/코드 인증/회차 이력/팀원 현황 |
+| `app/routers/devices.py` | 장치 등록/목록/인증/코드 조회/표시 완료 응답 |
 | `app/services/recruitment.py` | 모집글 잠금·작성자 검사·승인 인원 계산 공통 규칙 |
+| `app/services/attendance.py` | 출석 권한/만료/응답/프로세스별 시도 제한 |
 | `migrations/001_auth_sessions.sql` | 기존 데이터 보존하며 로그인 세션 테이블 추가 |
 | `scripts/init_env.py` | 기존 파일을 덮어쓰지 않고 `.env` 생성 |
 | `scripts/hash_seed_passwords.py` | SQL 테스트 계정의 평문 비밀번호를 해시로 변환 |
@@ -94,7 +101,7 @@ DB 변경 SQL이 새로 추가되는 경우에만 해당 버전 안내에 따라
 | 모집글 목록 | https://swe-project-u3f0.onrender.com/api/posts |
 
 배포된 서버를 이용하거나 Swagger에서 테스트할 때는 이 주소로 접속합니다.
-코드의 현재 API 버전은 0.3.0이며 실제 배포 반영 여부는 /docs 또는 /openapi.json의 버전과 API 목록으로 확인합니다.
+코드의 현재 API 버전은 0.4.0이며 실제 배포 반영 여부는 /docs 또는 /openapi.json의 버전과 API 목록으로 확인합니다.
 Render 무료 서버가 sleep 상태이면 첫 요청에서 시작 시간이 걸릴 수 있습니다.
 
 `/health`는 DB에 연결하지 않으므로 DB가 꺼져 있어도 200을 반환합니다.
@@ -124,6 +131,15 @@ Render 무료 서버가 sleep 상태이면 첫 요청에서 시작 시간이 걸
 | PATCH | `/api/applications/{application_id}` | 팀장 | 승인/거절 |
 | GET | `/api/users/me/applications` | 필요 | 내 지원 현황 |
 | GET | `/api/users/me/teams` | 필요 | 내가 만든 팀/승인된 팀 |
+| POST | `/api/posts/{post_id}/devices` | 팀장 | 장치 등록·인증키 1회 발급 |
+| GET | `/api/posts/{post_id}/devices` | 팀장 | 장치 목록; 키 제외 |
+| POST | `/api/posts/{post_id}/attendance-sessions` | 팀장 | 5분 출석 시작 |
+| GET | `/api/posts/{post_id}/attendance-sessions` | 팀장/승인 팀원 | 회차·이력과 본인 출석 |
+| POST | `/api/attendance-sessions/{session_id}/close` | 팀장 | 출석 종료 |
+| GET | `/api/attendance-sessions/{session_id}/records` | 팀장 | 팀원 출석 현황 |
+| POST | `/api/attendance-sessions/{session_id}/check-in` | 승인 팀원 | 6자리 문자열 코드 인증 |
+| GET | `/api/devices/{device_id}/display` | X-Device-Key | LCD에 표시할 코드 조회 |
+| POST | `/api/devices/{device_id}/ack` | X-Device-Key | 해당 회차 LCD 표시 완료 응답 |
 
 ### 로그인
 
@@ -229,11 +245,15 @@ Git 초기화 후 `git status --short`와 `git diff --cached --name-only`로 실
 
 - 회원가입·로그인·갱신·로그아웃·모집글 관리: [계정·모집글 API 안내](docs/accounts-and-posts.md)
 - 지원·승인·내 활동 및 실제 TiDB 조회 결과 대조: [지원·승인·내 활동 안내](docs/applications-and-activities.md)
+- 출석·장치 인증·ACK·출석 이력과 DB 대조: [출석·ESP32 안내](docs/attendance-and-esp32.md)
 - PC에서 자동 테스트 실행: [로컬 개발 안내](docs/local-development.md)
 
 일반 자동 테스트는 독립적인 메모리 SQLite를 사용하며 공유 TiDB는 읽거나 수정하지 않습니다.
-2026-10-28 버전은 SQLite 독립 테스트 **81개**, 별도 로컬 MySQL 테스트 **4개 통과**를 확인했습니다.
-일반 pytest 실행 시 MySQL 테스트 4개는 전용 로컬 DB 환경변수가 없으면 skip됩니다.
+2026-11-01 검증 결과는 SQLite 독립 테스트 **102개**, 로컬 MySQL 테스트 **8개**, 총 **110개 통과**입니다.
+일반 pytest 실행 시 MySQL 테스트 8개는 전용 로컬 DB 환경변수가 없으면 skip됩니다.
+MySQL에서는 동시 출석 시작/인증, 앞자리 0, ACK/만료와 DB 오류 시 롤백도 검증했습니다.
+Arduino 예제는 ESP32 core 3.3.12 / ArduinoJson 7.4.3으로 Wi-Fi·HTTPS 코드 전체를 포함한 컴파일에 통과했습니다.
+실기기 업로드/LCD 출력은 별도 확인이 필요합니다.
 회원가입, 토큰 교체/로그아웃,
 작성자 권한, 현재 승인 인원에 따른 정원 검증, 연관 데이터 삭제, CORS와 기존 API를 포함합니다.
 로그인/토큰 검증, 비밀값 비노출, DB 오류 처리, 검색/필터/페이지, 비밀번호 변환의 재실행을 확인합니다.
@@ -249,11 +269,12 @@ Git 초기화 후 `git status --short`와 `git diff --cached --name-only`로 실
 
 ## 다음 구현 순서
 
-1. 프론트 서버 모드에 계정/모집글 관리/지원·내 활동 API 연결
-2. 5분 출석 세션, 6자리 문자열 코드, 회원 출석 입력, 중복 방지
-3. ESP32 인증/코드 조회/표시 완료 확인과 LCD 연동
+1. 코드 push·Render 0.4.0 배포 후 출석·장치 API를 Swagger로 확인
+2. 프론트 서버 모드에 일반 기능과 출석 API 연결
+3. ESP32 config.h에 Wi-Fi와 장치 키 입력 후 Serial에서 HTTPS 코드 수신 확인
+4. 성공했던 LCD 예제로 어댑터 연결 후 실제 출력·ACK·만료·팀원 인증까지 통합 확인
 
-출석 코드는 일반 팀원 조회 응답에 포함하지 않고 인증된 기기 API에서만 전달하는 계획입니다.
+출석 코드는 일반 팀원 조회 응답에 포함하지 않고 인증된 기기 API에서만 전달합니다.
 최신 SQL에서 승인 팀원 등록과 현재 인원 재계산은 반영되었습니다.
 002 SQL은 승인 멤버 기준으로 인원을 보정하고 2/2인데 RECRUITING인 5번 샘플도 CLOSED로 맞춥니다.
 3번 글은 1/3명으로 재계산되어도 `CLOSED`가 유지되며, 이는 수동 마감으로 허용할 수 있습니다.

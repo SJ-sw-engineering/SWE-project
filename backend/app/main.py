@@ -9,25 +9,29 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
-from app.routers import applications, auth, health, posts
+from app.routers import applications, attendance, auth, devices, health, posts
+from app.services.attendance import CheckInLimiter
 
 logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    application = FastAPI(title=settings.app_name, version="0.3.0")
+    application = FastAPI(title=settings.app_name, version="0.4.0")
+    application.state.check_in_limiter = CheckInLimiter()
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Device-Key"],
     )
     application.include_router(health.router)
     application.include_router(auth.router, prefix="/api")
     application.include_router(posts.router, prefix="/api")
     application.include_router(applications.router, prefix="/api")
+    application.include_router(attendance.router, prefix="/api")
+    application.include_router(devices.router, prefix="/api")
 
     @application.exception_handler(SQLAlchemyError)
     async def database_error_handler(request: Request, exc: SQLAlchemyError):

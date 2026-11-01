@@ -6,7 +6,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.main import create_app
-from app.models import Application, ApprovedMember, AuthSession, Post, User
+from app.models import Application, ApprovedMember, AttendanceRecord, AttendanceSession, AuthSession, Device, Post, User
 from app.security import token_hash, utc_now, verify_password
 
 
@@ -206,14 +206,14 @@ def test_delete_cascades_and_context_preserves_application_privacy(client, engin
     assert context.json() == {"is_owner": False, "my_application": {"id": 1, "status": "APPROVED"}}
     assert client.get("/api/posts/2/context").status_code == 401
     assert "author_id" not in client.get("/api/posts/2").json()
-    # Extra existing tables need not have API models for DB cascades to work.
-    with engine.begin() as connection:
-        connection.execute(text("CREATE TABLE Devices (id INTEGER PRIMARY KEY, post_id INTEGER REFERENCES Posts(id) ON DELETE CASCADE)"))
-        connection.execute(text("CREATE TABLE AttendanceSessions (id INTEGER PRIMARY KEY, device_id INTEGER REFERENCES Devices(id) ON DELETE CASCADE)"))
-        connection.execute(text("CREATE TABLE AttendanceRecords (id INTEGER PRIMARY KEY, session_id INTEGER REFERENCES AttendanceSessions(id) ON DELETE CASCADE)"))
-        connection.execute(text("INSERT INTO Devices VALUES (1, 2)"))
-        connection.execute(text("INSERT INTO AttendanceSessions VALUES (1, 1)"))
-        connection.execute(text("INSERT INTO AttendanceRecords VALUES (1, 1)"))
+    with Session(engine) as db:
+        db.add(Device(id=1, post_id=2, device_credential="test-only-hash"))
+        db.flush()
+        db.add(AttendanceSession(id=1, post_id=2, device_id=1, leader_id="20191002",
+                                 code="000047", expiry_time=utc_now() + timedelta(minutes=5)))
+        db.flush()
+        db.add(AttendanceRecord(session_id=1, member_id="20191001", is_present=1))
+        db.commit()
     assert client.delete("/api/posts/2", headers=leader).status_code == 200
     with Session(engine) as db:
         for model in [Application, ApprovedMember]:
