@@ -4,7 +4,10 @@
 static const char WIFI_SSID[] = "";
 static const char WIFI_PASSWORD[] = "";
 static const char API_BASE_URL[] = "https://swe-project-u3f0.onrender.com";
-static const unsigned int DEVICE_ID = 0;  // id returned by POST /api/posts/{id}/devices
+// IMPORTANT: copy BOTH values from the SAME POST /api/posts/{id}/devices response.
+// A new device registration creates a new ID/key pair. Do not reuse the old key with a new ID.
+// Reuse this pair for repeated attendance sessions on the same team; no re-registration needed.
+static const unsigned int DEVICE_ID = 0;  // device id, NOT the post/session id
 static const char DEVICE_KEY[] = "";     // device_credential returned ONCE by that API
 
 // First test: 0 = Serial only, no LCD ACK. Then set 1 and upload again.

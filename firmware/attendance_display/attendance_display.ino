@@ -3,6 +3,7 @@
 #include <NetworkClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <esp_arduino_version.h>
 #include <time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -35,7 +36,10 @@ bool httpRequest(const String &path, const String &body, String *responseBody) {
   http.setConnectTimeout(10000);
   http.setTimeout(15000);
   http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
-  if (!http.begin(tls, String(API_BASE_URL) + path)) return false;
+  if (!http.begin(tls, String(API_BASE_URL) + path)) {
+    Serial.println("HTTPS initialization failed; check API_BASE_URL (HTTPS origin only).");
+    return false;
+  }
   const char *headers[] = {"Content-Type"};
   http.collectHeaders(headers, 1);
   http.addHeader("Accept", "application/json");
@@ -48,10 +52,43 @@ bool httpRequest(const String &path, const String &body, String *responseBody) {
     status = http.GET();
   }
   Serial.printf("HTTPS %s: %d\n", body.length() ? "ACK" : "display", status);
-  bool ok = status == 200 && http.header("Content-Type").startsWith("application/json");
+  if (status == 401) {
+    Serial.printf("Device authentication failed for DEVICE_ID=%u.\n", DEVICE_ID);
+    Serial.println("DEVICE_ID and DEVICE_KEY must come from the SAME device registration response.");
+    Serial.println("Changing DEVICE_ID alone is not enough. Update both values and upload again.");
+    Serial.println("An OPEN attendance session does not replace device authentication.");
+  }
+  String contentType = http.header("Content-Type");
+  contentType.trim();
+  // Media type tokens are case-insensitive; parameters such as charset are allowed.
+  String mediaType = contentType;
+  const int parameter = mediaType.indexOf(';');
+  if (parameter >= 0) mediaType = mediaType.substring(0, parameter);
+  mediaType.trim();
+  mediaType.toLowerCase();
+  bool ok = status == 200 && mediaType == "application/json";
+  if (status == 200 && !ok) {
+    Serial.printf("Rejected HTTP 200: Content-Type=%s; expected application/json.\n",
+                  contentType.length() ? contentType.c_str() : "<missing>");
+    Serial.println("Check API_BASE_URL: use the server origin, without /docs, /api or extra paths.");
+  } else if (status < 0) {
+    Serial.printf("HTTPS transport error: %s\n", HTTPClient::errorToString(status).c_str());
+  }
   if (ok && responseBody) {
-    if (http.getSize() > 4096) ok = false;
-    else *responseBody = http.getString();
+    const int expectedSize = http.getSize();
+    if (expectedSize > 4096) {
+      Serial.printf("Rejected JSON: Content-Length=%d exceeds 4096 bytes.\n", expectedSize);
+      ok = false;
+    } else {
+      *responseBody = http.getString();
+      const unsigned int receivedSize = responseBody->length();
+      Serial.printf("Display JSON: %u bytes (Content-Length=%d).\n", receivedSize, expectedSize);
+      if (!receivedSize || receivedSize > 4096 ||
+          (expectedSize >= 0 && receivedSize != static_cast<unsigned int>(expectedSize))) {
+        Serial.println("Rejected JSON: empty, oversized or incomplete response body.");
+        ok = false;
+      }
+    }
   }
   if (status == 401 || status == 403 || status == 404) {
     DisplayMessage idle = {};
@@ -122,17 +159,23 @@ void networkTask(void *) {
             pollSeconds = 2;
           }
         } else {
-          Serial.println("Server: no active attendance session.");
+          Serial.printf("Server: no active attendance session for DEVICE_ID=%u.\n", DEVICE_ID);
         }
         if (valid) {
+          if (message.sessionId) {
+            Serial.printf("Active session: id=%lu, DEVICE_ID=%u, remaining=%lu ms.\n",
+                          static_cast<unsigned long>(message.sessionId), DEVICE_ID,
+                          static_cast<unsigned long>(message.deadlineMs - millis()));
+          }
           xQueueOverwrite(displayQueue, &message);
           if (message.sessionId == 0) pendingAck = 0;
           else if (pendingAck && pendingAck != message.sessionId) pendingAck = 0;
         } else {
-          Serial.println("Invalid attendance session data; ignoring response.");
+          Serial.println("Invalid attendance session: expected positive id, 6 digit string code and 1..300 expires_in.");
         }
       } else {
-        Serial.println("Invalid display JSON or missing session field; ignoring response.");
+        if (jsonError) Serial.printf("Display JSON parse failed: %s\n", jsonError.c_str());
+        else Serial.println("Display JSON is missing the session field; check the API endpoint/deployment.");
       }
     }
     if (pendingAck) {
@@ -146,6 +189,8 @@ void networkTask(void *) {
 
 void setup() {
   Serial.begin(115200);
+  Serial.printf("Attendance firmware: 2026-11-02-r3; Arduino-ESP32 %s; DEVICE_ID=%u\n",
+                ESP_ARDUINO_VERSION_STR, DEVICE_ID);
   setupLcd();
   clearLcdCode();
   configured = strlen(WIFI_SSID) && strlen(DEVICE_KEY) && DEVICE_ID > 0

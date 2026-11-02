@@ -20,11 +20,13 @@ ESP32는 Render의 공개 HTTPS 주소에 접속하는 클라이언트입니다.
 ## 2. 서버에서 장치 준비
 
 백엔드 0.4.0 배포 후 Swagger에서 팀장으로 로그인합니다.
-2026-11-02 공개 API 확인 당시 Render는 0.2.0이었고 출석/장치 API가 없었습니다.
-먼저 최신 백엔드 커밋을 Render에 배포하고 /openapi.json에서 version=0.4.0과 /api/devices/{device_id}/display를 확인합니다.
-이미 0.4.0으로 배포된 뒤라면 이 배포 작업을 반복할 필요는 없습니다.
+2026-11-02 사용자 수동 배포 이후 공개 /openapi.json에서 0.4.0과 출석/장치 API 반영을 확인했습니다.
+기존 0.2.0 배포 문제는 해소되었으며, 이 테스트 때문에 다시 배포할 필요는 없습니다.
+새 계정 생성부터 진행하려면 [전체 수동 테스트](../backend/docs/full-system-test.md)를 참고하세요.
 POST /api/posts/{팀ID}/devices를 실행하고 응답의 id와 device_credential을 기록합니다.
 DB에 저장된 해시가 아니라 이 응답에서 받은 원문 키를 사용합니다.
+**id와 device_credential은 반드시 같은 등록 응답에서 받은 한 쌍을 사용합니다.**
+등록 POST를 다시 실행하면 다른 ID/키가 발급됩니다. 출석을 시작할 때마다 등록하지 않습니다.
 
 ## 3. Arduino IDE 준비
 
@@ -118,7 +120,7 @@ Serial-only mode (LCD_ENABLED=0); LCD disabled, ACK withheld.
 Wi-Fi connected. Synchronizing time for HTTPS.
 Time synchronized. Starting HTTPS polling.
 HTTPS display: 200
-Server: no active attendance session.
+Server: no active attendance session for DEVICE_ID=1.
 ```
 
 7. Swagger에서 POST /api/posts/P/attendance-sessions를 실행하고 본문에 `{ "device_id": D }`를 넣습니다.
@@ -202,6 +204,78 @@ Render의 인증기관이 바뀌면 공식 CA의 인증서로 갱신해야 할 �
 | LCD 백라이트만 켜짐 | 백팩의 대비 조절 가변저항과 배선 확인 |
 | hd44780.h: No such file | Library Manager에서 hd44780 by Bill Perry 설치 |
 | NetworkClientSecure.h: No such file | esp32 by Espressif Systems 3.x 및 ESP32 보드 선택 |
+
+### HTTP 200만 반복되고 코드가 없을 때
+
+HTTP 200은 응답 상태이며 출석 코드 JSON을 읽었다는 의미는 아닙니다.
+2026-11-02-r2부터 기존에 조용히 건너뛰던 응답 형식/크기 오류도 Serial에 출력합니다.
+진단 수정본도 ESP32 core 3.3.12 / ArduinoJson 7.4.3 / hd44780 1.3.2의 LCD 활성 설정으로 컴파일에 통과했습니다.
+수정한 attendance_display.ino를 업로드한 뒤 EN/RESET을 누르면 시작 로그에서
+`Attendance firmware: 2026-11-02-r3`와 실제 DEVICE_ID를 확인할 수 있습니다.
+기존 config.h의 Wi-Fi와 장치 키는 유지합니다. 펌웨어만 수정한 경우 Render를 다시 배포할 필요는 없습니다.
+
+1. 출석 시작 POST가 201이고 재시도가 409이면 활성 회차가 이미 있다는 뜻입니다. 같은 POST를 반복하지 않습니다.
+2. Swagger의 **ESP32 장치 → 파란색 GET /api/devices/{device_id}/display**를 엽니다.
+3. Authorize의 DeviceKey에 기기 원문 키를 넣고 device_id를 ESP32의 DEVICE_ID와 똑같이 입력해 실행합니다.
+4. Response body의 session을 확인합니다. 이 GET은 새 회차를 만드는 요청이 아닙니다.
+
+| Swagger 또는 Serial 결과 | 다음 확인 |
+|---|---|
+| GET display의 session=null | 해당 장치에 활성 회차가 없음. 시작한 팀/장치와 5분 만료 여부 확인 |
+| GET display의 session에 id/code/expires_in 존재 | 서버에 코드는 있음. ESP32의 응답 수신/JSON 처리 로그 확인 |
+| GET display가 401 | DeviceKey와 device_id 조합 확인; 사용자 접근 토큰을 DeviceKey에 넣지 않음 |
+| Serial: Rejected HTTP 200: Content-Type=text/html | JSON 대신 HTML을 받음. API_BASE_URL과 실제 응답 페이지 확인 |
+| Serial: Content-Type=<missing> | 응답 헤더를 확인할 수 없음. 사용 중인 ESP32 core 버전과 서버 응답 비교 |
+| Serial: Rejected JSON / parse failed | 빈 응답·잘린 응답·응답 크기·JSON 오류 로그 확인 |
+| Serial: no active attendance session for DEVICE_ID=... | 그 장치의 session=null. 서버의 회차와 장치 ID 확인 |
+| Serial: Active session 뒤 Received attendance code | 수신/검증 성공. LCD와 ACK 단계로 진행 |
+
+API_BASE_URL은 `https://swe-project-u3f0.onrender.com`입니다. /docs, /api, # 조각을 붙이지 않습니다.
+장치 인증 401은 Render sleep이나 사용자 접근 토큰 30분 만료와 별개입니다. 장치 키 자체에는 현재 유효 기간이 없습니다.
+Swagger 새로고침 후 인증 입력이 사라졌다면 DeviceKey에 config.h의 DEVICE_KEY 원문을 다시 넣습니다.
+따옴표/Bearer 접두어/DB의 sha256: 해시를 넣지 않습니다. HTTPBearer에는 사용자 접근 토큰을 별도로 넣습니다.
+정확한 원문 키를 잃어버렸다면 팀장으로 장치를 새로 등록하고 새 ID/키를 config.h에 함께 반영해 재업로드합니다.
+같은 팀의 활성 출석 회차가 남아 있으면 먼저 종료하고 새 장치로 새 회차를 시작합니다. 계정과 모집글을 다시 만들 필요는 없습니다.
+진단 로그는 응답 형식/크기/장치·회차 ID를 표시하며 인증키나 Wi-Fi 비밀번호는 출력하지 않습니다.
+수신한 출석 코드는 기존처럼 Serial에 출력되므로 화면을 공유할 때 코드가 유효한 시간도 고려합니다.
+
+### 회차가 OPEN인데 장치가 401일 때
+
+OPEN은 팀장이 출석 회차를 만들었다는 상태입니다. 장치의 ID/키 인증 성공을 뜻하지 않습니다.
+사진 예시의 post_id=60001은 팀 모집글, device_id=30002는 장치, id=3은 출석 회차입니다.
+ESP32의 DEVICE_ID에는 30002를 넣고 DEVICE_KEY에는 **30002를 등록할 때 같은 응답에서 받은 device_credential**을 넣습니다.
+이전 장치 1의 키를 그대로 두면 401입니다. 30002처럼 큰 ID도 정상적으로 사용할 수 있습니다.
+
+1. 장치 등록 시 보관한 응답에서 같은 ID/키 쌍인지 확인합니다. 키를 채팅/GitHub에 공유하지 않습니다.
+2. config.h의 DEVICE_ID/DEVICE_KEY를 둘 다 확인하고 .ino를 다시 업로드합니다. 파일 수정만으로 보드의 값은 바뀌지 않습니다.
+3. Serial 시작 로그의 DEVICE_ID가 원하는 숫자인지 확인합니다.
+4. Swagger DeviceKey에도 같은 키를 넣고 GET /api/devices/30002/display로 확인합니다.
+5. 200 + session=null이면 인증은 성공했지만 활성 출석이 없습니다. 새 회차를 시작하고 5분 안에 다시 확인합니다.
+6. 200 + session.code가 있으면 ESP32에서도 수신 코드와 LCD/ACK를 확인합니다.
+
+같은 등록 응답을 잃었다면 GET 장치 목록으로 원문 키를 복구할 수는 없습니다.
+팀장으로 장치를 새로 등록하고, 새 ID/키를 함께 저장합니다. 기존 회차는 종료하고 새 장치로 다시 출석을 시작합니다.
+401을 피하려고 서버의 장치 인증을 제거하거나 DB 키를 평문으로 바꾸지 않습니다.
+2026-11-02 분리된 API 테스트에서 OPEN 회차 + 장치 30002 + 이전 키는 401, 올바른 키는 코드 조회 200을 확인했습니다.
+관련 출석·장치 테스트 22개가 통과했습니다. 실제 사용자 DB의 키는 읽거나 변경하지 않았습니다.
+401 안내를 추가한 r3 펌웨어도 가짜 키/DEVICE_ID=30002/LCD 활성 설정으로 ESP32 컴파일에 통과했습니다.
+
+### 팀장과 최초 장치 설정의 관계
+
+팀장이 되었다고 장치 ID가 자동 발급되지는 않습니다. 본인 모집글의 POST /api/posts/{post_id}/devices를 호출해야 발급됩니다.
+현재 구조의 장치는 한 모집글(팀)에 연결되며 등록할 때 ID/키가 만들어집니다.
+장치 관리 담당자가 Wi-Fi와 ID/키를 config.h에 한 번 입력해 업로드하고, 같은 팀에서는 계속 재사용합니다.
+팀장은 매회 웹에서 출석 시작/종료만 실행하면 됩니다. 새 출석 회차 ID는 펌웨어에 입력하지 않습니다.
+Wi-Fi 변경, 장치 재등록, 다른 팀으로의 변경처럼 설정이 바뀌는 경우에만 수정·재업로드합니다.
+웹 설정 화면/USB Serial 입력/NVS 저장을 이용해 코드 편집 없는 설정 방식으로 확장할 수 있지만, 현재 예제에는 포함하지 않았습니다.
+시연 범위에서는 한 팀과 한 ESP32의 설정을 유지하는 방식으로 진행할 수 있습니다.
+
+### config.h 보관과 시연
+
+config.h는 실제 Wi-Fi 비밀번호와 기기 인증키가 들어 있는 개인 설정입니다. GitHub에는 올리지 않습니다.
+attendance_display/.gitignore에서 제외하며 config.example.h에는 빈 값과 공개 기본 설정만 공유합니다.
+시연할 노트북의 스케치 폴더에 config.h를 유지하고, 다른 PC로 옮기면 같은 폴더에 별도로 준비합니다.
+시연 장소의 Wi-Fi가 달라지면 SSID/비밀번호를 수정해 다시 업로드합니다. 같은 설정이면 재업로드할 필요는 없습니다.
 
 기기 키나 Wi-Fi 비밀번호를 채팅/스크린샷/공개 GitHub에 올리지 않습니다.
 Swagger 및 실제 DB 확인은 [출석 API 안내](../backend/docs/attendance-and-esp32.md)를 참고하세요.

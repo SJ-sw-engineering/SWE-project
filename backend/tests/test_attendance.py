@@ -77,6 +77,26 @@ def test_full_lcd_ack_check_in_and_history_flow(client, engine, team):
         assert db.scalar(select(func.count()).select_from(AttendanceRecord).where(AttendanceRecord.session_id == session["id"])) == 1
 
 
+def test_open_session_on_large_device_id_requires_matching_device_key(client, engine, team):
+    # TiDB device IDs need not start at 1 or stay small. This is an isolated SQLite DB.
+    new_key = "esp_test_only_new_registration_key"
+    with Session(engine) as db:
+        db.add(Device(id=30002, post_id=team["post_id"],
+                      device_credential="sha256:" + token_hash(new_key)))
+        db.commit()
+    opened = client.post(f"/api/posts/{team['post_id']}/attendance-sessions",
+                         headers=team["leader"], json={"device_id": 30002})
+    assert opened.status_code == 201 and opened.json()["status"] == "OPEN"
+    path = "/api/devices/30002/display"
+    wrong_pair = client.get(path, headers=team["device_headers"])
+    assert wrong_pair.status_code == 401
+    assert "code" not in wrong_pair.json()
+    matched_pair = client.get(path, headers={"X-Device-Key": new_key})
+    assert matched_pair.status_code == 200
+    assert matched_pair.json()["session"]["id"] == opened.json()["id"]
+    assert matched_pair.json()["session"]["code"] == "000047"
+
+
 def test_device_secret_never_in_list_and_user_token_is_not_device_key(client, team):
     path = f"/api/posts/{team['post_id']}/devices"
     listing = client.get(path, headers=team["leader"])
