@@ -66,6 +66,7 @@ void networkTask(void *) {
   uint32_t nextReconnectMs = 0;
   uint32_t pendingAck = 0;
   bool ntpStarted = false;
+  bool timeReadyLogged = false;
   for (;;) {
     if (WiFi.status() != WL_CONNECTED) {
       if (static_cast<int32_t>(millis() - nextReconnectMs) >= 0) {
@@ -85,6 +86,10 @@ void networkTask(void *) {
       vTaskDelay(pdMS_TO_TICKS(500));
       continue;
     }
+    if (!timeReadyLogged) {
+      Serial.println("Time synchronized. Starting HTTPS polling.");
+      timeReadyLogged = true;
+    }
     uint32_t confirmed;
     if (xQueueReceive(ackQueue, &confirmed, 0) == pdTRUE) pendingAck = confirmed;
     if (static_cast<int32_t>(millis() - nextPollMs) < 0) {
@@ -97,7 +102,8 @@ void networkTask(void *) {
     unsigned int pollSeconds = 10;
     if (httpRequest(devicePath + "/display", "", &payload)) {
       JsonDocument document;
-      if (!deserializeJson(document, payload) && document.containsKey("session")) {
+      const DeserializationError jsonError = deserializeJson(document, payload);
+      if (!jsonError && !document["session"].isUnbound()) {
         DisplayMessage message = {};
         bool valid = true;
         if (!document["session"].isNull()) {
@@ -115,12 +121,18 @@ void networkTask(void *) {
             if (static_cast<int32_t>(millis() - message.deadlineMs) >= 0) message.sessionId = 0;
             pollSeconds = 2;
           }
+        } else {
+          Serial.println("Server: no active attendance session.");
         }
         if (valid) {
           xQueueOverwrite(displayQueue, &message);
           if (message.sessionId == 0) pendingAck = 0;
           else if (pendingAck && pendingAck != message.sessionId) pendingAck = 0;
+        } else {
+          Serial.println("Invalid attendance session data; ignoring response.");
         }
+      } else {
+        Serial.println("Invalid display JSON or missing session field; ignoring response.");
       }
     }
     if (pendingAck) {
@@ -169,11 +181,18 @@ void loop() {
         current = {};
         lcdWritten = false;
       } else {
-        if (current.sessionId != received.sessionId || strcmp(current.code, received.code) != 0) lcdWritten = false;
+        if (current.sessionId != received.sessionId || strcmp(current.code, received.code) != 0) {
+          lcdWritten = false;
+          Serial.print("Received attendance code: ");
+          Serial.println(received.code);
+        }
         current = received;
         if (!lcdWritten && static_cast<int32_t>(millis() - current.deadlineMs) < 0) {
           lcdWritten = showAttendanceCode(current.code);
-          if (lcdWritten) xQueueOverwrite(ackQueue, &current.sessionId);
+          // A slow LCD I/O must not acknowledge a code that expired during the write.
+          if (lcdWritten && static_cast<int32_t>(millis() - current.deadlineMs) < 0) {
+            xQueueOverwrite(ackQueue, &current.sessionId);
+          }
         }
       }
     }
