@@ -12,8 +12,9 @@
   const appStatus = value => ({ PENDING: '검토 중', APPROVED: '승인됨', REJECTED: '거절됨' }[value] || '알 수 없음');
   const date = value => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '등록일 정보 없음';
   const url = (file, postId) => `${file}?id=${encodeURIComponent(postId)}`;
-  const badge = (value, label) => `<span class="badge ${e(value.toLowerCase())}">${e(label)}</span>`;
+  const badge = (value, label) => `<span class="badge ${e(String(value || 'unknown').toLowerCase())}">${e(label)}</span>`;
   const link = (label, file, postId, cls = 'secondary-button') => `<a class="${cls}" href="${e(postId == null ? file : url(file, postId))}">${e(label)}</a>`;
+  let capabilities = { applications: false, attendance: false };
   let busy = false;
   let refreshTimer;
   let clockTimer;
@@ -22,10 +23,10 @@
   function header() {
     const u = api.me();
     document.getElementById('site-header').innerHTML = `<div class="logo"><a href="index.html">StudyMate</a></div><nav aria-label="주 메뉴"><a href="index.html#recruitment">모집글</a>${u ? `<a href="my-applications.html">내 지원</a><a href="my-teams.html">내 팀</a><span class="nav-user">${e(u.name)} (${e(u.username)})</span><button type="button" class="nav-logout" id="logout">로그아웃</button>` : '<a href="login.html">로그인</a><a href="signup.html" class="signup-button">회원가입</a>'}</nav>`;
-    if (isServer()) document.querySelector('nav').innerHTML = `<a href="index.html#recruitment">모집글</a>${u ? `<a href="profile.html">내 정보</a><span class="nav-user">${e(u.name)} (${e(u.username)})</span><button type="button" class="nav-logout" id="logout">로그아웃</button>` : '<a href="login.html">서버 로그인</a>'}`;
-    document.getElementById('logout')?.addEventListener('click', () => { api.logout(); location.href = 'index.html'; });
+    if (isServer()) document.querySelector('nav').innerHTML = `<a href="index.html#recruitment">모집글</a>${u ? `<a href="profile.html">내 정보</a><a href="my-applications.html">내 지원</a><a href="my-teams.html">내 팀</a><span class="nav-user">${e(u.name)} (${e(u.username)})</span><button type="button" class="nav-logout" id="logout">로그아웃</button>` : '<a href="login.html">서버 로그인</a><a href="signup.html">회원가입</a>'}`;
+    document.getElementById('logout')?.addEventListener('click', event => action(event.currentTarget, async () => { await api.logout(); location.href = 'index.html'; }));
     const banner = document.querySelector('.demo-banner');
-    banner.innerHTML = `<span>${isServer() ? '서버 연결 모드 · 로그인·내 정보·모집글 조회를 제공합니다.' : '로컬 데모 · 실제 서버와 별개의 브라우저 데이터입니다.'}</span> <button type="button" id="switch-source">${isServer() ? '로컬 데모로 전환' : '서버 조회로 전환'}</button>`;
+    banner.innerHTML = `<span>${isServer() ? '서버 연결 모드 · 계정과 모집글 관리' : '로컬 데모 · 실제 서버와 별개의 브라우저 데이터입니다.'}</span> <button type="button" id="switch-source">${isServer() ? '로컬 데모로 전환' : '서버 조회로 전환'}</button>`;
     document.getElementById('switch-source').addEventListener('click', () => { source.setMode(isServer() ? 'local' : 'server'); location.href = 'index.html'; });
   }
   function message(value, success = false) {
@@ -50,7 +51,7 @@
     shell('로그인이 필요합니다', '로그인 후 이 기능을 사용할 수 있습니다.', link('로그인', `login.html?next=${encodeURIComponent(next)}`, null, 'main-button'));
     return false;
   }
-  function requireOwner(p) { if (p.author_id !== api.me()?.username) throw new Error('팀장만 접근할 수 있는 페이지입니다.'); }
+  function requireOwner(p) { if (!(isServer() ? p.is_owner : p.author_id === api.me()?.username)) throw new Error('팀장만 접근할 수 있는 페이지입니다.'); }
   async function action(button, work) {
     if (busy) return;
     busy = true;
@@ -102,7 +103,7 @@
   }
   async function serverHome() {
     main.className = '';
-    main.innerHTML = `<section class="hero"><div class="hero-content"><p class="hero-small">UNIVERSITY STUDY & PROJECT</p><h1>함께 공부하고<br>함께 프로젝트를 시작하세요.</h1><p class="hero-description">실제 서버에 등록된 스터디와 프로젝트를 찾아보세요.</p><a class="main-button" href="#recruitment">모집글 둘러보기</a></div></section><section class="recruitment-section" id="recruitment"><div class="section-title"><div><p class="section-small">RECRUITMENT</p><h2>스터디·프로젝트 모집</h2></div></div><form class="filter-bar server-filters" role="search"><label class="search-field">검색<input name="keyword" type="search" maxlength="100" placeholder="키워드 입력"></label><label>모집 분야<input name="category" type="text" maxlength="100" placeholder="예: Web/Frontend"></label><label>모집 상태<select name="status"><option value="">전체</option><option value="RECRUITING">모집 중</option><option value="CLOSED">모집 마감</option></select></label><button class="main-button" type="submit">검색</button><button class="secondary-button" type="button" id="reset-search">초기화</button></form><p class="field-help">분야는 정확히 일치하는 값으로 검색합니다. 모집 상태는 서버 값을 표시합니다.</p><p id="list-summary" role="status" aria-live="polite"></p><div class="recruitment-list" id="post-list"></div><div class="pagination" id="pagination"></div></section>`;
+    main.innerHTML = `<section class="hero"><div class="hero-content"><p class="hero-small">UNIVERSITY STUDY & PROJECT</p><h1>함께 공부하고<br>함께 프로젝트를 시작하세요.</h1><p class="hero-description">실제 서버에 등록된 스터디와 프로젝트를 찾아보세요.</p><a class="main-button" href="#recruitment">모집글 둘러보기</a></div></section><section class="recruitment-section" id="recruitment"><div class="section-title"><div><p class="section-small">RECRUITMENT</p><h2>스터디·프로젝트 모집</h2></div>${link('모집글 작성', 'recruit-write.html', null, 'write-button')}</div><form class="filter-bar server-filters" role="search"><label class="search-field">검색<input name="keyword" type="search" maxlength="100" placeholder="키워드 입력"></label><label>모집 분야<input name="category" type="text" maxlength="100" placeholder="예: Web/Frontend"></label><label>모집 상태<select name="status"><option value="">전체</option><option value="RECRUITING">모집 중</option><option value="CLOSED">모집 마감</option></select></label><button class="main-button" type="submit">검색</button><button class="secondary-button" type="button" id="reset-search">초기화</button></form><p class="field-help">분야는 정확히 일치하는 값으로 검색합니다. 모집 상태는 서버 값을 표시합니다.</p><p id="list-summary" role="status" aria-live="polite"></p><div class="recruitment-list" id="post-list"></div><div class="pagination" id="pagination"></div></section>`;
     let filters = { keyword: params.get('keyword') || '', category: params.get('category') || '', status: ['RECRUITING', 'CLOSED'].includes(params.get('status')) ? params.get('status') : '' };
     let currentPage = /^[1-9]\d*$/.test(params.get('page') || '') ? Number(params.get('page')) : 1;
     let sequence = 0;
@@ -142,29 +143,19 @@
     document.getElementById('reset-search').addEventListener('click', () => { form.reset(); filters = { keyword: '', category: '', status: '' }; load(1); });
     await load(currentPage);
   }
-  async function serverDetail() {
-    shell('모집글 상세', '서버에서 모집글을 불러오는 중입니다.', '<p class="empty-state" role="status">잠시 기다려 주세요.</p>', true);
-    try {
-      const p = await api.getPost(id);
-      shell(p.title, `팀장 ${p.author_name} · ${date(p.created_at)}`, `<div class="detail-top"><span class="category">${e(p.category)}</span>${badge(p.status, postStatus(p.status))}</div><p class="pre-wrap">${e(p.content)}</p><div class="recruit-info"><div class="info-item"><span>팀 정원</span><strong>팀장 포함 ${e(p.target_size)}명</strong></div><div class="info-item"><span>현재 인원</span><strong>${e(p.current_size ?? '정보 없음')}${p.current_size == null ? '' : '명'}</strong></div></div><p class="identity-card">지원과 모집글 관리 기능은 백엔드 API가 준비되면 연결됩니다.</p><p class="form-link">${link('목록으로', 'index.html')}</p>`, true);
-    } catch (error) {
-      shell('모집글을 불러올 수 없습니다', error.message, '<button class="secondary-button" id="retry-detail">다시 시도</button> ' + link('목록으로', 'index.html'), true);
-      bindClick('#retry-detail', serverDetail);
-    }
-  }
   async function signup() {
     shell('회원가입', '아이디 또는 학번으로 StudyMate 계정을 만드세요.', `<form>${input('아이디 / 학번', 'username', 'text', '', 'autocomplete="username" minlength="4" maxlength="20" pattern="[A-Za-z0-9_\\-]{4,20}" aria-describedby="username-help"')}<p class="field-help" id="username-help">영문·숫자·밑줄·하이픈 4~20자</p>${input('이름', 'name', 'text', '', 'autocomplete="name" maxlength="50"')}${input('비밀번호', 'password', 'password', '', 'autocomplete="new-password" minlength="8" maxlength="128"')}${input('비밀번호 확인', 'password_check', 'password', '', 'autocomplete="new-password" minlength="8" maxlength="128"')}<button class="form-button" type="submit">회원가입</button></form><p class="form-link"><a href="login.html">이미 계정이 있나요? 로그인</a></p>`);
     submit(async values => { if (values.password !== values.password_check) throw new Error('비밀번호가 일치하지 않습니다.'); await api.signup(values); location.href = 'login.html?registered=1'; });
   }
   async function login() {
     if (isServer() && api.me()) { await profile(); return; }
-    shell(isServer() ? '서버 로그인' : '로컬 데모 로그인', isServer() ? '백엔드에 등록된 계정으로 로그인하세요. 로컬 데모 계정은 사용할 수 없습니다.' : '이 브라우저에서 가입한 데모 계정으로 로그인하세요.', `<form>${input('아이디 / 학번', 'username', 'text', '', 'autocomplete="username" maxlength="20"')}${input('비밀번호', 'password', 'password', '', 'autocomplete="current-password" maxlength="128"')}<button class="form-button" type="submit">로그인</button></form>${isServer() ? '<p class="field-help auth-help">서버 회원가입은 아직 제공되지 않습니다. 테스트 계정은 백엔드 담당자에게 확인하세요.</p>' : '<p class="form-link"><a href="signup.html">새 계정 만들기</a></p>'}`);
+    shell(isServer() ? '서버 로그인' : '로컬 데모 로그인', isServer() ? '백엔드에 등록된 계정으로 로그인하세요. 로컬 데모 계정은 사용할 수 없습니다.' : '이 브라우저에서 가입한 데모 계정으로 로그인하세요.', `<form>${input('아이디 / 학번', 'username', 'text', '', 'autocomplete="username" maxlength="20"')}${input('비밀번호', 'password', 'password', '', 'autocomplete="current-password" maxlength="128"')}<button class="form-button" type="submit">로그인</button></form>${isServer() ? '<p class="form-link"><a href="signup.html">서버 회원가입</a></p>' : '<p class="form-link"><a href="signup.html">새 계정 만들기</a></p>'}`);
     if (params.has('registered')) message('회원가입이 완료되었습니다. 로그인해 주세요.', true);
     submit(async values => {
       await api.login(values.username, values.password);
       const next = params.get('next');
       // Restrict return targets to this application's known HTML pages.
-      const allowed = isServer() ? /^(index|profile|recruit-detail)\.html(?:\?id=\d+)?$/ : /^(index|recruit-write|recruit-detail|apply|applicants|attendance|attendance-check|attendance-history|my-applications|my-teams|lcd-simulator)\.html(?:\?id=\d+)?$/;
+      const allowed = isServer() ? /^(index|profile|recruit-detail|recruit-write|apply|applicants|my-applications|my-teams)\.html(?:\?id=\d+)?$/ : /^(index|recruit-write|recruit-detail|apply|applicants|attendance|attendance-check|attendance-history|my-applications|my-teams|lcd-simulator)\.html(?:\?id=\d+)?$/;
       location.href = next && allowed.test(next) ? next : 'index.html';
     });
   }
@@ -182,20 +173,19 @@
     submit(async values => { const postId = await api.savePost(values, p?.id); location.href = url('recruit-detail.html', postId); });
   }
   async function detail() {
-    if (isServer()) return serverDetail();
-    const p = await api.getPost(id); const u = api.me(); const leader = u?.username === p.author_id;
+    const p = await api.getPost(id); const u = api.me(); const leader = (isServer() ? p.is_owner : u?.username === p.author_id);
     let controls;
-    if (leader) controls = `<div class="action-row">${link('수정', 'recruit-write.html', p.id)}${link('지원자 관리', 'applicants.html', p.id)}${link('출석 관리', 'attendance.html', p.id)}<button class="delete-button" id="delete-post">삭제</button>${p.status === 'RECRUITING' ? '<button class="secondary-button" id="close-post">모집 마감</button>' : ''}</div>`;
-    else if (p.my_application) controls = `<p>내 지원 상태: ${badge(p.my_application.status, appStatus(p.my_application.status))}</p>${link('내 지원 현황', 'my-applications.html')}${p.my_application.status === 'APPROVED' ? link('출석 인증', 'attendance-check.html', p.id) : ''}`;
-    else controls = p.status === 'RECRUITING' ? link('지원하기', 'apply.html', p.id, 'main-button') : '<button class="main-button" disabled>모집 마감</button>';
-    shell(p.title, `팀장 ${p.author_name} (${p.author_id}) · ${date(p.created_at)}`, `<div class="detail-top"><span class="category">${e(p.category)}</span>${badge(p.status, postStatus(p.status))}</div><p class="pre-wrap">${e(p.content)}</p><div class="recruit-info"><div class="info-item"><span>팀 정원</span><strong>팀장 포함 ${p.target_size}명</strong></div><div class="info-item"><span>현재 인원</span><strong>${p.current_size}명</strong></div><div class="info-item"><span>전체 지원자</span><strong>${p.applicant_count}명</strong></div></div><div class="detail-actions">${controls}</div><p class="form-link">${link('목록으로', 'index.html')}</p>`, true);
+    if (leader) controls = `<div class="action-row">${link('수정', 'recruit-write.html', p.id)}${!isServer() || capabilities.applications ? link('지원자 관리', 'applicants.html', p.id) : ''}${!isServer() || capabilities.attendance ? link('출석 관리', 'attendance.html', p.id) : ''}<button class="delete-button" id="delete-post">삭제</button>${p.status === 'RECRUITING' ? '<button class="secondary-button" id="close-post">모집 마감</button>' : ''}</div>`;
+    else if (p.my_application) controls = `<p>내 지원 상태: ${badge(p.my_application.status, appStatus(p.my_application.status))}</p>${link('내 지원 현황', 'my-applications.html')}${(!isServer() || capabilities.attendance) && p.my_application.status === 'APPROVED' ? link('출석 인증', 'attendance-check.html', p.id) : ''}`;
+    else controls = isServer() && !capabilities.applications ? '<p>지원 기능은 백엔드 0.3.0 배포 후 사용할 수 있습니다.</p>' : p.status === 'RECRUITING' ? link('지원하기', 'apply.html', p.id, 'main-button') : '<button class="main-button" disabled>모집 마감</button>';
+    shell(p.title, `팀장 ${p.author_name}${p.author_id ? ' (' + p.author_id + ')' : ''} · ${date(p.created_at)}`, `<div class="detail-top"><span class="category">${e(p.category)}</span>${badge(p.status, postStatus(p.status))}</div><p class="pre-wrap">${e(p.content)}</p><div class="recruit-info"><div class="info-item"><span>팀 정원</span><strong>팀장 포함 ${p.target_size}명</strong></div><div class="info-item"><span>현재 인원</span><strong>${e(p.current_size ?? '정보 없음')}명</strong></div>${!isServer() ? `<div class="info-item"><span>전체 지원자</span><strong>${p.applicant_count}명</strong></div>` : ''}</div><div class="detail-actions">${controls}</div><p class="form-link">${link('목록으로', 'index.html')}</p>`, true);
     bindClick('#delete-post', async () => { if (!confirm('모집글과 관련 지원·출석 기록을 삭제하시겠습니까?')) return; await api.deletePost(p.id); location.href = 'index.html'; });
     bindClick('#close-post', async () => { if (!confirm('모집을 마감하시겠습니까? 출석 기능은 계속 사용할 수 있습니다.')) return; await api.closePost(p.id); await detail(); message('모집이 마감되었습니다.', true); });
   }
   async function apply() {
     if (!needLogin()) return;
     const p = await api.getPost(id); const u = api.me();
-    if (p.author_id === u.username) throw new Error('자신의 모집글에는 지원할 수 없습니다.');
+    if (isServer() ? p.is_owner : p.author_id === u.username) throw new Error('자신의 모집글에는 지원할 수 없습니다.');
     if (p.my_application) { shell('이미 지원한 모집글입니다', appStatus(p.my_application.status), link('내 지원 현황', 'my-applications.html')); return; }
     if (p.status !== 'RECRUITING') throw new Error('모집이 마감되었습니다.');
     shell('모집글 지원', p.title, `<div class="identity-card"><strong>${e(u.name)}</strong><p>아이디: ${e(u.username)}</p></div><form>${textarea('자기소개와 지원 동기', 'message', '', 5000)}<button class="form-button" type="submit">지원하기</button></form><p class="form-link">${link('모집글로 돌아가기', 'recruit-detail.html', p.id)}</p>`);
@@ -210,20 +200,35 @@
   async function myApplications() {
     if (!needLogin()) return;
     const list = await api.myApplications();
-    shell('내 지원 현황', '내가 지원한 모집글과 처리 결과를 확인하세요.', `<div class="stack-list">${list.length ? list.map(a => `<article class="recruitment-card"><h2>${e(a.post.title)}</h2><p>${e(a.post.category)} · ${e(date(a.applied_at))}</p>${badge(a.status, appStatus(a.status))}<p class="pre-wrap">${e(a.message)}</p><div class="action-row">${link('모집글 보기', 'recruit-detail.html', a.post_id)}${a.status === 'APPROVED' ? link('출석 인증', 'attendance-check.html', a.post_id) : ''}</div></article>`).join('') : empty('아직 지원한 모집글이 없습니다.')}</div><p class="form-link">${link('모집글 찾기', 'index.html')}</p>`, true);
+    shell('내 지원 현황', '내가 지원한 모집글과 처리 결과를 확인하세요.', `<div class="stack-list">${list.length ? list.map(a => `<article class="recruitment-card"><h2>${e(a.post.title)}</h2><p>${e(a.post.category)} · ${e(date(a.applied_at))}</p>${badge(a.status, appStatus(a.status))}<p class="pre-wrap">${e(a.message)}</p><div class="action-row">${link('모집글 보기', 'recruit-detail.html', a.post_id)}${(!isServer() || capabilities.attendance) && a.status === 'APPROVED' ? link('출석 인증', 'attendance-check.html', a.post_id) : ''}</div></article>`).join('') : empty('아직 지원한 모집글이 없습니다.')}</div><p class="form-link">${link('모집글 찾기', 'index.html')}</p>`, true);
   }
   async function teams() {
     if (!needLogin()) return;
     const list = await api.myTeams();
-    shell('내 팀', '모집이 마감된 팀에서도 출석과 이력을 관리할 수 있습니다.', `<div class="stack-list">${list.length ? list.map(p => postCard(p, `<p class="team-role">${p.role === 'LEADER' ? '내가 만든 팀 · 팀장' : '승인된 팀 · 팀원'}</p><div class="action-row">${p.role === 'LEADER' ? link('지원자 관리', 'applicants.html', p.id) + link('출석 관리', 'attendance.html', p.id) : link('출석 인증', 'attendance-check.html', p.id)}${link('출석 이력', 'attendance-history.html', p.id)}</div>`)).join('') : empty('참여 중인 팀이 없습니다. 팀을 만들거나 모집글에 지원해 보세요.')}</div>`, true);
+    shell('내 팀', '모집이 마감된 팀에서도 출석과 이력을 관리할 수 있습니다.', `<div class="stack-list">${list.length ? list.map(p => postCard(p, `<p class="team-role">${p.role === 'LEADER' ? '내가 만든 팀 · 팀장' : '승인된 팀 · 팀원'}</p><div class="action-row">${isServer() ? (p.role === 'LEADER' ? link('지원자 관리', 'applicants.html', p.id) + (capabilities.attendance ? link('출석 관리', 'attendance.html', p.id) : '') : (capabilities.attendance ? link('출석 인증', 'attendance-check.html', p.id) : link('모집글 보기', 'recruit-detail.html', p.id))) : (p.role === 'LEADER' ? link('지원자 관리', 'applicants.html', p.id) + link('출석 관리', 'attendance.html', p.id) : link('출석 인증', 'attendance-check.html', p.id))}${!isServer() || capabilities.attendance ? link('출석 이력', 'attendance-history.html', p.id) : ''}</div>`)).join('') : empty('참여 중인 팀이 없습니다. 팀을 만들거나 모집글에 지원해 보세요.')}</div>`, true);
   }
   async function attendance() {
     if (!needLogin()) return;
     const p = await api.getPost(id); requireOwner(p);
-    const devices = await api.devices(p.id);
-    shell('출석 관리', p.title, `<div class="attendance-card"><p class="attendance-label">현재 출석 상태</p><div id="session-area"></div><div id="start-area">${devices.length ? `<label for="device">연결된 장치</label><select id="device">${devices.map(d => `<option value="${d.id}">LCD 시뮬레이터 #${d.id}</option>`).join('')}</select><button class="main-button" id="start">출석 시작 (5분)</button>` : '<p>테스트용 장치를 먼저 연결해 주세요.</p><button class="secondary-button" id="add-device">LCD 시뮬레이터 연결</button>'}</div><div class="action-row">${link('LCD 시뮬레이터 열기', 'lcd-simulator.html', p.id)}${link('출석 이력', 'attendance-history.html', p.id)}</div></div><section class="attendance-roster"><h2>팀원 출석 현황</h2><div id="roster-list" class="roster-list"></div></section><p class="form-link">${link('내 팀으로', 'my-teams.html')}</p>`, true);
-    bindClick('#add-device', async () => { await api.addSimulator(p.id); await attendance(); message('테스트용 LCD 장치를 연결했습니다.', true); });
-    bindClick('#start', async () => { await api.startAttendance(p.id, document.getElementById('device').value); await update(); message('출석을 시작했습니다. LCD 시뮬레이터에서 표시를 확인하세요.', true); });
+    let devices = await api.devices(p.id);
+    shell('출석 관리', p.title, `<div class="attendance-card"><p class="attendance-label">현재 출석 상태</p><div id="session-area"></div><div id="start-area"></div><div class="action-row">${!isServer() ? link('LCD 시뮬레이터 열기', 'lcd-simulator.html', p.id) : ''}${link('출석 이력', 'attendance-history.html', p.id)}</div></div>${isServer() ? '<section class="device-setup"><h2>ESP32 장치 설정</h2><p class="field-help auth-help">처음 연결할 때만 장치를 등록하세요. 발급된 장치 ID와 키를 ESP32의 config.h에 입력합니다. 기존 장치가 있다면 재등록하지 않아도 됩니다.</p><button class="secondary-button" id="register-device">새 ESP32 장치 등록</button><div id="device-key-area" hidden></div><p class="field-help auth-help">표시 확인은 ESP32가 보낸 ACK입니다. 마지막 ACK 시각은 실시간 온라인 상태를 뜻하지 않습니다.</p></section>' : ''}<section class="attendance-roster"><h2>팀원 출석 현황</h2><div id="roster-list" class="roster-list"></div></section><p class="form-link">${link('내 팀으로', 'my-teams.html')}</p>`, true);
+    function drawDevices() {
+      document.getElementById('start-area').innerHTML = devices.length ? `<label for="device">연결된 장치</label><select id="device">${devices.map(d => `<option value="${e(d.id)}">${isServer() ? 'ESP32' : 'LCD 시뮬레이터'} #${e(d.id)}</option>`).join('')}</select><button class="main-button" id="start">출석 시작 (5분)</button>` : isServer() ? '<p>등록된 장치가 없습니다. 아래에서 ESP32 장치를 등록해 주세요.</p>' : '<p>테스트용 장치를 먼저 연결해 주세요.</p><button class="secondary-button" id="add-device">LCD 시뮬레이터 연결</button>';
+      bindClick('#add-device', async () => { await api.addSimulator(p.id); await attendance(); message('테스트용 LCD 장치를 연결했습니다.', true); });
+      bindClick('#start', async () => { await api.startAttendance(p.id, document.getElementById('device').value); await update(); message(isServer() ? '출석을 시작했습니다. ESP32의 LCD 표시를 확인하세요.' : '출석을 시작했습니다. LCD 시뮬레이터에서 표시를 확인하세요.', true); });
+    }
+    drawDevices();
+    bindClick('#register-device', async () => {
+      if (!confirm('이 팀에 새 ESP32 장치를 등록하시겠습니까? 장치 키는 한 번만 발급됩니다.')) return;
+      const device = await api.registerDevice(p.id);
+      const area = document.getElementById('device-key-area');
+      area.hidden = false;
+      area.innerHTML = `<div class="identity-card"><strong>장치 ID: ${e(device.id)}</strong><p>아래 키는 이 화면에서 한 번만 확인할 수 있습니다. config.h에 보관하고 채팅·GitHub·스크린샷에는 포함하지 마세요.</p><label for="device-key">장치 인증키</label><input id="device-key" type="password" readonly autocomplete="off" value="${e(device.device_credential)}"><div class="action-row"><button type="button" class="secondary-button" id="show-device-key">키 표시</button><button type="button" class="secondary-button" id="dismiss-device-key">보관 완료</button></div></div>`;
+      document.getElementById('show-device-key').addEventListener('click', event => { const field = document.getElementById('device-key'); field.type = field.type === 'password' ? 'text' : 'password'; event.target.textContent = field.type === 'password' ? '키 표시' : '키 숨기기'; });
+      document.getElementById('dismiss-device-key').addEventListener('click', () => { area.innerHTML = ''; area.hidden = true; });
+      devices = await api.devices(p.id); drawDevices(); await update();
+      message('장치를 등록했습니다. 인증키를 ESP32 설정에 보관해 주세요.', true);
+    });
     let previousSignature = '';
     async function update() {
       const sessions = await api.sessions(p.id); const latest = sessions[0];
@@ -232,7 +237,7 @@
       if (signature !== previousSignature || !document.getElementById('session-area').textContent) {
         previousSignature = signature;
         document.getElementById('start-area').hidden = !!active;
-        document.getElementById('session-area').innerHTML = active ? `<p class="attendance-status active">출석 진행 중 · 회차 #${active.id}</p><p>${active.display_ack ? 'LCD 표시 확인됨' : 'LCD 표시 대기 중'}</p><p id="remaining-time" class="remaining-time"></p><button class="secondary-button" id="close-session">출석 종료</button>` : `<p class="attendance-status">${latest ? '출석 종료' : '출석 대기'}</p>`;
+        document.getElementById('session-area').innerHTML = active ? `<p class="attendance-status active">출석 진행 중 · 회차 #${e(active.id)}</p><p>${active.display_ack ? 'LCD 표시 확인됨' : 'LCD 표시 대기 중'}</p><p id="remaining-time" class="remaining-time"></p><button class="secondary-button" id="close-session">출석 종료</button>` : `<p class="attendance-status">${latest ? '출석 종료' : '출석 대기'}</p>`;
         if (active) { timer(active.expiry_time); bindClick('#close-session', async () => { await api.closeAttendance(active.id); await update(); message('출석을 종료했습니다.', true); }); }
         else clearInterval(clockTimer);
       }
@@ -248,7 +253,7 @@
   async function check() {
     if (!needLogin()) return;
     const p = await api.getPost(id);
-    if (p.author_id === api.me().username) { shell('팀장 출석 관리', '팀원의 출석 현황은 관리 화면에서 확인하세요.', link('출석 관리', 'attendance.html', p.id)); return; }
+    if (isServer() ? p.is_owner : p.author_id === api.me().username) { shell('팀장 출석 관리', '팀원의 출석 현황은 관리 화면에서 확인하세요.', link('출석 관리', 'attendance.html', p.id)); return; }
     shell('출석 인증', p.title, `<div id="check-session"></div><form id="check-form" hidden>${input('LCD에 표시된 숫자 6자리', 'code', 'text', '', 'inputmode="numeric" autocomplete="off" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="예: 047281"')}<button type="submit" class="form-button">출석 인증</button></form><div class="action-row">${link('출석 이력', 'attendance-history.html', p.id)}${link('내 팀으로', 'my-teams.html')}</div>`);
     let current = null; let previous = '';
     async function update() {
@@ -268,7 +273,7 @@
   }
   async function history() {
     if (!needLogin()) return;
-    const p = await api.getPost(id); const leader = p.author_id === api.me().username;
+    const p = await api.getPost(id); const leader = isServer() ? p.is_owner : p.author_id === api.me().username;
     const sessions = await api.sessions(p.id);
     shell('출석 이력', `${p.title} · ${leader ? '팀 회차별 출석 현황' : '내 출석 기록'}`, `<div class="stack-list">${sessions.length ? sessions.map(s => `<article class="recruitment-card"><h2>출석 회차 #${s.id}</h2><p>${e(date(s.start_time))}</p>${badge(s.status, s.status === 'OPEN' ? '진행 중' : '종료')}${leader ? `<button class="secondary-button" data-session="${s.id}" data-state="${s.status}">팀원 명단 보기</button>` : `<p>${badge(s.my_record ? 'PRESENT' : 'ABSENT', s.my_record ? '출석' : s.status === 'OPEN' ? '미인증' : '결석')}${s.my_record ? ` · ${e(date(s.my_record.checked_in_at))}` : ''}</p>`}</article>`).join('') : empty('아직 출석 기록이 없습니다.')}</div>${leader ? '<section id="history-roster" hidden><h2 id="roster-title"></h2><div id="roster-list" class="roster-list"></div></section>' : ''}<p class="form-link">${link('내 팀으로', 'my-teams.html')}</p>`, true);
     document.querySelectorAll('[data-session]').forEach(button => button.addEventListener('click', () => action(button, async () => { await showRoster(button.dataset.session, button.dataset.state); document.getElementById('roster-title').textContent = `회차 #${button.dataset.session} 출석 명단`; document.getElementById('history-roster').hidden = false; })));
@@ -298,11 +303,20 @@
     try {
       let authError;
       if (isServer()) {
+        try { capabilities = await api.capabilities(); } catch (error) { authError = error.message; }
         try { await api.refreshMe(); } catch (error) { authError = error.message; }
       }
       header();
-      if (isServer() && !['index', 'recruit-detail', 'login', 'profile'].includes(page)) {
+      if (isServer() && !['index', 'recruit-detail', 'login', 'profile', 'signup', 'recruit-write', 'apply', 'applicants', 'my-applications', 'my-teams', 'attendance', 'attendance-check', 'attendance-history'].includes(page)) {
         shell('서버 연동 준비 중', '현재 서버 모드는 로그인·내 정보·모집글 조회와 검색을 제공합니다. 나머지 기능은 로컬 데모로 전환해 시험할 수 있습니다.', link('모집글 보기', 'index.html'));
+        return;
+      }
+      if (isServer() && ['apply', 'applicants', 'my-applications', 'my-teams'].includes(page) && !capabilities.applications) {
+        shell('백엔드 배포 대기', '지원·승인·내 활동 기능은 백엔드 0.3.0 배포 후 사용할 수 있습니다. 현재 서버에는 이 API가 없습니다.', link('모집글 보기', 'index.html'));
+        return;
+      }
+      if (isServer() && ['attendance', 'attendance-check', 'attendance-history'].includes(page) && !capabilities.attendance) {
+        shell('출석 API 배포 대기', '출석 API가 서버에 배포되면 사용할 수 있습니다.', link('내 팀으로', 'my-teams.html'));
         return;
       }
       const route = routes[page];
@@ -311,7 +325,8 @@
       if (authError) message(authError);
     } catch (error) {
       if (epoch !== renderEpoch) return;
-      shell('페이지를 열 수 없습니다', error.message, link('홈으로 돌아가기', 'index.html'));
+      shell('페이지를 열 수 없습니다', error.message, '<button class="secondary-button" id="retry-page">다시 시도</button> ' + link('홈으로 돌아가기', 'index.html'));
+      bindClick('#retry-page', boot);
       message(error.message);
     }
   }
@@ -320,7 +335,7 @@
   window.addEventListener('studymate:auth-expired', () => {
     if (!isServer()) return;
     header();
-    if (page === 'profile' || document.querySelector('.profile-fields')) needLogin();
+    if (['profile', 'recruit-write', 'apply', 'applicants', 'my-applications', 'my-teams', 'attendance', 'attendance-check', 'attendance-history'].includes(page) || document.querySelector('.profile-fields')) needLogin();
     message('로그인이 만료되었습니다. 다시 로그인해 주세요.');
   });
   // Only check the local deadline here; protected requests also enforce server 401.

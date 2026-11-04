@@ -31,6 +31,9 @@ nav { flex-wrap: wrap; justify-content: flex-end; gap: 16px; }
 .profile-fields dt { color: #666; font-size: 13px; margin-top: 18px; }
 .profile-fields dd { margin: 8px 0 20px; font-weight: bold; overflow-wrap: anywhere; }
 .auth-help { margin-top: 20px; }
+.device-setup { margin-top: 28px; border-top: 1px solid #eee; padding-top: 24px; }
+.device-setup h2 { font-size: 20px; }
+#device-key { display: block; width: 100%; padding: 12px; margin-top: 8px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; }
 .pre-wrap { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; align-items: center; }
 .action-row > * { flex: 0 1 auto; }
