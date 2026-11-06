@@ -1,0 +1,1030 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, "Malgun Gothic", sans-serif;
+    background-color: #f7f8fc;
+    color: #222;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+
+/* =========================
+   Header
+========================= */
+
+.header {
+    height: 72px;
+    padding: 0 10%;
+
+    background-color: white;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    border-bottom: 1px solid #eeeeee;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4f46e5;
+}
+
+.logo a {
+    color: #4f46e5;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+
+nav a {
+    font-size: 14px;
+    color: #444;
+}
+
+nav a:hover {
+    color: #4f46e5;
+}
+
+.signup-button {
+    background-color: #4f46e5;
+    color: white !important;
+
+    padding: 10px 17px;
+
+    border-radius: 8px;
+}
+
+.signup-button:hover {
+    background-color: #4338ca;
+}
+
+
+/* =========================
+   Main Hero
+========================= */
+
+.hero {
+    background-color: #eef0ff;
+
+    padding: 100px 20px;
+
+    text-align: center;
+}
+
+.hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hero-small {
+    color: #4f46e5;
+
+    font-size: 13px;
+    font-weight: bold;
+
+    letter-spacing: 2px;
+
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+    font-size: 44px;
+    line-height: 1.35;
+
+    margin-bottom: 22px;
+}
+
+.hero-description {
+    color: #666;
+
+    font-size: 16px;
+    line-height: 1.7;
+
+    margin-bottom: 32px;
+}
+
+.main-button {
+    display: inline-block;
+
+    background-color: #4f46e5;
+    color: white;
+
+    padding: 14px 25px;
+
+    border-radius: 8px;
+
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.main-button:hover {
+    background-color: #4338ca;
+}
+
+
+/* =========================
+   Recruitment Section
+========================= */
+
+.recruitment-section {
+    max-width: 1100px;
+
+    margin: 70px auto;
+
+    padding: 0 20px;
+}
+
+.section-title {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 28px;
+}
+
+.section-small {
+    color: #4f46e5;
+
+    font-size: 12px;
+    font-weight: bold;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 7px;
+}
+
+.section-title h2 {
+    font-size: 28px;
+}
+
+.write-button {
+    border: none;
+
+    background-color: #4f46e5;
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+.write-button:hover {
+    background-color: #4338ca;
+}
+
+
+/* =========================
+   Recruitment Cards
+========================= */
+
+.recruitment-list {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 20px;
+}
+
+.recruitment-card {
+    display: block;
+
+    background-color: white;
+
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+
+    padding: 24px;
+
+    color: #222;
+    text-decoration: none;
+
+    transition: 0.2s;
+}
+
+.recruitment-card:hover {
+    transform: translateY(-4px);
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.card-top {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 18px;
+}
+
+.category {
+    background-color: #eef0ff;
+    color: #4f46e5;
+
+    padding: 6px 10px;
+
+    border-radius: 6px;
+
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status {
+    color: #16a34a;
+
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.recruitment-card h3 {
+    font-size: 18px;
+
+    margin-bottom: 12px;
+}
+
+.recruitment-card p {
+    color: #666;
+
+    font-size: 14px;
+    line-height: 1.6;
+
+    min-height: 68px;
+}
+
+.card-info {
+    display: flex;
+
+    justify-content: space-between;
+
+    border-top: 1px solid #eeeeee;
+
+    margin-top: 20px;
+    padding-top: 15px;
+
+    color: #777;
+
+    font-size: 12px;
+}
+
+
+/* =========================
+   Login / Signup
+========================= */
+
+.login-page {
+    min-height: 650px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 60px 20px;
+}
+
+.login-box {
+    width: 100%;
+    max-width: 420px;
+
+    background-color: white;
+
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+
+    padding: 40px;
+}
+
+.login-box h1 {
+    font-size: 28px;
+
+    margin-bottom: 10px;
+}
+
+.login-description {
+    color: #888;
+
+    font-size: 14px;
+
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    margin-bottom: 8px;
+}
+
+.form-group input {
+    width: 100%;
+
+    padding: 13px;
+
+    border: 1px solid #ddd;
+    border-radius: 8px;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: #4f46e5;
+}
+
+.login-button {
+    width: 100%;
+
+    border: none;
+
+    background-color: #4f46e5;
+    color: white;
+
+    padding: 14px;
+
+    border-radius: 8px;
+
+    font-size: 15px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+.login-button:hover {
+    background-color: #4338ca;
+}
+
+.signup-link {
+    text-align: center;
+
+    margin-top: 25px;
+
+    color: #888;
+
+    font-size: 13px;
+}
+
+.signup-link a {
+    color: #4f46e5;
+
+    font-weight: bold;
+}
+
+
+/* =========================
+   Recruitment Detail
+========================= */
+
+.detail-page {
+    min-height: 700px;
+
+    padding: 60px 20px;
+}
+
+.detail-container {
+    max-width: 850px;
+
+    margin: 0 auto;
+
+    background-color: white;
+
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+
+    padding: 40px;
+}
+
+.detail-top {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 20px;
+}
+
+.detail-title {
+    font-size: 32px;
+
+    margin-bottom: 12px;
+}
+
+.detail-author {
+    color: #888;
+
+    font-size: 13px;
+
+    margin-bottom: 25px;
+}
+
+.detail-container hr {
+    border: none;
+
+    border-top: 1px solid #eeeeee;
+
+    margin-bottom: 35px;
+}
+
+.detail-content h2 {
+    font-size: 19px;
+
+    margin-top: 30px;
+    margin-bottom: 12px;
+}
+
+.detail-content p {
+    color: #555;
+
+    font-size: 15px;
+
+    line-height: 1.8;
+
+    margin-bottom: 10px;
+}
+
+.recruit-info {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 15px;
+
+    margin-top: 40px;
+}
+
+.info-item {
+    background-color: #f7f8fc;
+
+    padding: 20px;
+
+    border-radius: 8px;
+
+    text-align: center;
+}
+
+.info-item span {
+    display: block;
+
+    color: #888;
+
+    font-size: 12px;
+
+    margin-bottom: 8px;
+}
+
+.info-item strong {
+    font-size: 15px;
+}
+
+.detail-button-area {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 30px;
+}
+
+.apply-button {
+    flex: 1;
+
+    border: none;
+
+    background-color: #4f46e5;
+    color: white;
+
+    padding: 15px;
+
+    border-radius: 8px;
+
+    font-size: 15px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+.apply-button:hover {
+    background-color: #4338ca;
+}
+
+.back-button {
+    padding: 15px 25px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 8px;
+
+    color: #555;
+
+    font-size: 14px;
+}
+
+.back-button:hover {
+    background-color: #f5f5f5;
+}
+
+
+/* =========================
+   Footer
+========================= */
+
+footer {
+    text-align: center;
+
+    padding: 35px;
+
+    background-color: white;
+
+    color: #999;
+
+    font-size: 12px;
+
+    border-top: 1px solid #eeeeee;
+}
+
+
+/* =========================
+   Mobile
+========================= */
+
+@media (max-width: 768px) {
+
+    .header {
+        padding: 0 20px;
+    }
+
+    nav {
+        gap: 12px;
+    }
+
+    .hero h1 {
+        font-size: 32px;
+    }
+
+    .recruitment-list {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-container {
+        padding: 25px;
+    }
+
+    .detail-title {
+        font-size: 26px;
+    }
+
+    .recruit-info {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-button-area {
+        flex-direction: column;
+    }
+
+}
+
+/* =========================
+   Select / Textarea
+========================= */
+
+.form-group select {
+    width: 100%;
+
+    padding: 13px;
+
+    border: 1px solid #ddd;
+    border-radius: 8px;
+
+    font-size: 14px;
+
+    background-color: white;
+
+    outline: none;
+
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    border-color: #4f46e5;
+}
+
+.form-group textarea {
+    width: 100%;
+
+    min-height: 160px;
+
+    padding: 13px;
+
+    border: 1px solid #ddd;
+    border-radius: 8px;
+
+    font-size: 14px;
+    font-family: Arial, "Malgun Gothic", sans-serif;
+
+    resize: vertical;
+
+    outline: none;
+}
+
+.form-group textarea:focus {
+    border-color: #4f46e5;
+}
+
+/* =========================
+   Recruitment Manage
+========================= */
+
+.manage-button-area {
+    display: none;
+
+    gap: 10px;
+
+    margin-top: 15px;
+}
+
+.edit-button,
+.delete-button {
+    flex: 1;
+
+    padding: 12px;
+
+    border-radius: 8px;
+
+    font-size: 14px;
+
+    cursor: pointer;
+}
+
+.edit-button {
+    border: 1px solid #4f46e5;
+
+    background-color: white;
+
+    color: #4f46e5;
+}
+
+.edit-button:hover {
+    background-color: #eef0ff;
+}
+
+.delete-button {
+    border: 1px solid #ddd;
+
+    background-color: white;
+
+    color: #e11d48;
+}
+
+.delete-button:hover {
+    background-color: #fff1f2;
+}
+
+/* =========================
+   Applicant Management
+========================= */
+
+.applicant-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+
+    margin-top: 30px;
+}
+
+.applicant-card {
+    display: grid;
+
+    grid-template-columns: 1fr auto auto;
+
+    align-items: center;
+
+    gap: 25px;
+
+    padding: 20px;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 10px;
+
+    background-color: #fafafa;
+}
+
+.applicant-info h3 {
+    font-size: 16px;
+
+    margin-bottom: 7px;
+}
+
+.applicant-info p {
+    color: #777;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+
+    margin-bottom: 5px;
+}
+
+.application-status {
+    font-size: 12px;
+
+    font-weight: bold;
+}
+
+.application-status.pending {
+    color: #d97706;
+}
+
+.application-status.approved {
+    color: #16a34a;
+}
+
+.application-status.rejected {
+    color: #dc2626;
+}
+
+.applicant-buttons {
+    display: flex;
+
+    gap: 8px;
+}
+
+.approve-button,
+.reject-button {
+    padding: 8px 14px;
+
+    border-radius: 6px;
+
+    font-size: 12px;
+
+    cursor: pointer;
+}
+
+.approve-button {
+    border: none;
+
+    background-color: #4f46e5;
+
+    color: white;
+}
+
+.reject-button {
+    border: 1px solid #ddd;
+
+    background-color: white;
+
+    color: #dc2626;
+}
+
+.approve-button:disabled,
+.reject-button:disabled {
+    opacity: 0.4;
+
+    cursor: not-allowed;
+}
+
+
+@media (max-width: 768px) {
+
+    .applicant-card {
+        grid-template-columns: 1fr;
+    }
+
+    .applicant-buttons {
+        width: 100%;
+    }
+
+    .approve-button,
+    .reject-button {
+        flex: 1;
+    }
+
+}
+
+#applicants-button {
+    display: none;
+}
+
+#close-recruit-button {
+    width: 100%;
+    display: none;
+}
+
+/* ========================================
+   출석 관리
+======================================== */
+
+.attendance-info {
+    margin-top: 25px;
+    padding: 18px;
+    border: 1px solid #eeeeee;
+    border-radius: 10px;
+    background-color: #fafafa;
+}
+
+.attendance-info p {
+    color: #777;
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.attendance-info h2 {
+    font-size: 18px;
+}
+
+
+/* 출석 카드 */
+
+.attendance-card {
+    margin-top: 20px;
+    padding: 30px;
+    border: 1px solid #eeeeee;
+    border-radius: 10px;
+    text-align: center;
+    background-color: white;
+}
+
+.attendance-label {
+    color: #777;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.attendance-status {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 25px;
+}
+
+.attendance-status.active {
+    color: #4f46e5;
+}
+
+
+/* 출석 코드 */
+
+.attendance-code-area {
+    padding: 25px;
+    border-radius: 10px;
+    background-color: #f7f8fc;
+}
+
+.attendance-code-area p {
+    color: #777;
+    font-size: 13px;
+}
+
+.attendance-code {
+    margin: 15px 0;
+    font-size: 42px;
+    font-weight: bold;
+    letter-spacing: 8px;
+}
+
+.remaining-time {
+    font-weight: bold;
+}
+
+
+/* 출석 버튼 */
+
+.attendance-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.main-button,
+.secondary-button {
+    flex: 1;
+    padding: 13px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.main-button {
+    border: none;
+    background-color: #4f46e5;
+    color: white;
+}
+
+.main-button:hover {
+    background-color: #4338ca;
+}
+
+.main-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.secondary-button {
+    border: 1px solid #ddd;
+    background-color: white;
+    color: #333;
+}
+
+.secondary-button:hover {
+    background-color: #f7f7f7;
+}
+
+.secondary-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
+/* 팀원 출석 현황 */
+
+.attendance-roster {
+    margin-top: 30px;
+}
+
+.attendance-roster h2 {
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+
+.roster-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.roster-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border: 1px solid #eeeeee;
+    border-radius: 8px;
+    background-color: #fafafa;
+}
+
+.roster-item strong {
+    font-size: 14px;
+}
+
+.roster-item p {
+    margin-top: 4px;
+    color: #777;
+    font-size: 12px;
+}
+
+.roster-status {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.roster-status.present {
+    color: #16a34a;
+    background-color: #f0fdf4;
+}
+
+.roster-status.absent {
+    color: #777;
+    background-color: #f3f4f6;
+}
+
+
+/* 모바일 */
+
+@media (max-width: 768px) {
+
+    .attendance-card {
+        padding: 20px;
+    }
+
+    .attendance-code {
+        font-size: 32px;
+        letter-spacing: 5px;
+    }
+
+    .attendance-buttons {
+        flex-direction: column;
+    }
+
+}
