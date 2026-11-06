@@ -1,0 +1,64 @@
+# Synced ChatGPT references and local workspace metadata
+/sources/
+/AGENTS.md
+/.codex/
+/.agents/
+
+# Temporary reviews, test tools, and generated downloads
+/tmp/
+/output/
+
+# Local settings and secrets; share only empty example settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+application_default_credentials.json
+client_secret*.json
+*service-account*.json
+*service_account*.json
+*serviceaccount*.json
+.aws/
+.gcloud/
+.config/gcloud/
+.azure/
+.ssh/
+
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+htmlcov/
+.coverage
+.coverage.*
+
+# Local logs, databases, and backups. Schema/migration .sql files remain eligible.
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+*.sql.gz
+*.dump
+backups/
+db-backups/
+
+# Frontend dependencies and build outputs
+node_modules/
+dist/
+build/
+
+# Local editor / OS state
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
